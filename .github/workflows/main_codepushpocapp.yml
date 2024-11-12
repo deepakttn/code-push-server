@@ -21,6 +21,14 @@ jobs:
         with:
           node-version: '18.x'
 
+      - name: Bash Action
+        uses: rethab/bash-action@v1
+        with:
+          command: ls
+                    
+        
+          
+
       - name: npm install, build, and test
         run: |
           npm install
