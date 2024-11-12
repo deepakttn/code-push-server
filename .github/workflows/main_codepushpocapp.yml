@@ -22,9 +22,10 @@ jobs:
           node-version: '18.x'
 
       - name: Bash Action
-        uses: rethab/bash-action@v1
-        with:
-          command: ls
+        run: | 
+          pwd
+          echo ........
+          ls
                     
         
           
