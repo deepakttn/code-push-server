@@ -24,7 +24,7 @@ jobs:
       - name: Bash Action
         run: | 
           pwd
-          echo ........
+          echo ................
           ls
 
       - name: npm install, build, and test
