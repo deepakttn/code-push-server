@@ -54,6 +54,9 @@ jobs:
             --space-id ${{ env.CONTENTFUL_SPACE_ID }} \
             --environment-id pr-${{ github.event.pull_request.number }} \
             --management-token ${{ env.CONTENTFUL_TOKEN }}
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
       - name: Validate schema
         env:
           CONTENTFUL_TOKEN: ${{ env.CONTENTFUL_TOKEN }}
@@ -67,6 +70,9 @@ jobs:
             --space-id "$CONTENTFUL_SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
             --environment-id pr-${{ github.event.pull_request.number }}
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
   # Production Promotion: Lock/Promote/Unlock
   promote-env:
