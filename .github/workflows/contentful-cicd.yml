@@ -94,9 +94,9 @@ jobs:
           retention-days: 1
       - name: Promote testing -> master
         run: |
-          contentful space environment alias update \
+          contentful space environment-alias update \
             --space-id "$CONTENTFUL_SPACE_ID" \
-            --environment-id master \
+            --alias-id master \
             --target-environment-id testing
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
