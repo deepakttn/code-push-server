@@ -97,7 +97,8 @@ jobs:
           contentful space environment-alias update \
             --space-id "$CONTENTFUL_SPACE_ID" \
             --alias-id master \
-            --target-environment-id testing
+            --target-environment-id testing \
+            --management-token "$CONTENTFUL_TOKEN"
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
