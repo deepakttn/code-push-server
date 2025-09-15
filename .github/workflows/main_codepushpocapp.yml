@@ -6,7 +6,7 @@ name: Build and deploy Node.js app to Azure Web App - codepushpocapp
 on:
   push:
     branches:
-      - main
+      - mainc
   workflow_dispatch:
 
 jobs:
