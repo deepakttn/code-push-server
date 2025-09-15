@@ -71,8 +71,8 @@ jobs:
 
       - name: Validate schema
         env:
-          CONTENTFUL_TOKEN: ${{ env.CONTENTFUL_TOKEN }}
-          CONTENTFUL_SPACE_ID: ${{ env.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_ENVIRONMENT_ID: pr-request-validation
         run: node ./scripts/validateSchema.js
 
