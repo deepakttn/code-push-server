@@ -29,7 +29,7 @@ env:
 jobs:
   # Preview env handler
   preview-env:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -42,9 +42,9 @@ jobs:
         run: npm install -g contentful-cli
       - name: Create preview environment
         run: |
-          contentful environment create \
-            --space-id ${{ env.CONTENTFUL_SPACE_ID }} \
-            --management-token ${{ env.CONTENTFUL_TOKEN }} \
+          contentful space environment create \
+            --space-id "$CONTENTFUL_SPACE_ID" \
+            --management-token "$CONTENTFUL_TOKEN" \
             --environment-id pr-${{ github.event.pull_request.number }} \
             --name "Preview for PR #${{ github.event.pull_request.number }}" \
             --source master
@@ -63,14 +63,14 @@ jobs:
       - name: Cleanup preview environment
         if: always()
         run: |
-          contentful environment delete \
-            --space-id ${{ env.CONTENTFUL_SPACE_ID }} \
-            --management-token ${{ env.CONTENTFUL_TOKEN }} \
+          contentful space environment delete \
+            --space-id "$CONTENTFUL_SPACE_ID" \
+            --management-token "$CONTENTFUL_TOKEN" \
             --environment-id pr-${{ github.event.pull_request.number }}
 
   # Production Promotion: Lock/Promote/Unlock
   promote-env:
-    if: github.event_name == 'push'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
