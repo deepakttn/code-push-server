@@ -92,13 +92,15 @@ jobs:
           name: contentful-roles-backup
           path: roles-backup.json
           retention-days: 1
-      - name: Promote testing -> production
+      - name: Promote testing -> master
         run: |
-          contentful environment alias create \
-            --space-id ${{ env.CONTENTFUL_SPACE_ID }} \
-            --management-token ${{ env.CONTENTFUL_TOKEN }} \
-            --alias-id master \
-            --environment-id testing --force
+          contentful space environment alias update \
+            --space-id "$CONTENTFUL_SPACE_ID" \
+            --environment-id master \
+            --target-environment-id testing
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
       - name: Download roles backup artifact
         if: always()
         uses: actions/download-artifact@v4
