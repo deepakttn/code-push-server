@@ -48,8 +48,8 @@ jobs:
           contentful space environment create \
             --space-id "$CONTENTFUL_SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
-            --environment-id pr-${{ github.event.pull_request.number }} \
-            --name "Preview for PR #${{ github.event.pull_request.number }}" \
+            --environment-id pr-request-validation \
+            --name "Preview for PR pr-request-validation \
             --source master
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
@@ -59,8 +59,9 @@ jobs:
         run: |
           contentful space migration ./Migrations/index.js \
             --space-id "$CONTENTFUL_SPACE_ID" \
-            --environment-id pr-${{ github.event.pull_request.number }} \
-            --management-token "$CONTENTFUL_TOKEN"
+            --environment-id pr-request-validation \
+            --management-token "$CONTENTFUL_TOKEN" \
+            --yes
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
@@ -69,16 +70,16 @@ jobs:
         env:
           CONTENTFUL_TOKEN: ${{ env.CONTENTFUL_TOKEN }}
           CONTENTFUL_SPACE_ID: ${{ env.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_ENVIRONMENT_ID: pr-${{ github.event.pull_request.number }}
+          CONTENTFUL_ENVIRONMENT_ID: pr-request-validation
         run: node ./scripts/validateSchema.js
-        
+
       - name: Cleanup preview environment
         if: always()
         run: |
           contentful space environment delete \
             --space-id "$CONTENTFUL_SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
-            --environment-id pr-${{ github.event.pull_request.number }}
+            --environment-id pr-request-validation
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
