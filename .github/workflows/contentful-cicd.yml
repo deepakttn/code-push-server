@@ -42,6 +42,9 @@ jobs:
 
       - name: Install Contentful CLI
         run: npm install -g contentful-cli
+      
+      - name: Install contentful-management
+        run: npm install contentful-management
 
       - name: Create preview environment
         run: |
