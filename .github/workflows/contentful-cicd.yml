@@ -49,7 +49,7 @@ jobs:
             --space-id "$CONTENTFUL_SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
             --environment-id pr-request-validation \
-            --name "Preview for PR pr-request-validation \
+            --name "Preview for PR pr-request-validation" \
             --source master
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
