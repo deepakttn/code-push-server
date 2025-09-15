@@ -81,11 +81,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - name: Install Contentful CLI
         run: npm install -g contentful-cli
-      - name: Lock master environment (simulate or real external script)
-        run: |
-          bash ./scripts/contentful-lock-master.sh \
-            ${{ env.CONTENTFUL_SPACE_ID }} \
-            ${{ env.CONTENTFUL_TOKEN }}
+      - name: Lock master environment
+        run: bash ./scripts/contentful-lock-master.sh "$CONTENTFUL_SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
       - name: Upload roles backup artifact
         uses: actions/upload-artifact@v4
         with:
@@ -107,7 +107,8 @@ jobs:
           path: .
       - name: Unlock master environment
         if: always()
-        run: |
-          bash ./scripts/contentful-unlock-master.sh \
-            ${{ env.CONTENTFUL_SPACE_ID }} \
-            ${{ env.CONTENTFUL_TOKEN }}
+        run: bash ./scripts/contentful-unlock-master.sh "$CONTENTFUL_SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+        

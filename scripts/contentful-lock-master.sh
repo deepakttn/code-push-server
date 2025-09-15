@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SPACE_ID="$1"
-TOKEN="$2"
+SPACE_ID="${1:-}"
+TOKEN="${2:-}"
 API="https://api.contentful.com"
 MASTER_ENV="master"
 
