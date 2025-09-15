@@ -34,12 +34,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
+
       - name: Install Contentful CLI
         run: npm install -g contentful-cli
+
       - name: Create preview environment
         run: |
           contentful space environment create \
@@ -48,21 +51,27 @@ jobs:
             --environment-id pr-${{ github.event.pull_request.number }} \
             --name "Preview for PR #${{ github.event.pull_request.number }}" \
             --source master
-      - name: Run migrations in preview env
-        run: |
-          contentful space migration ./Migrations/index.js \
-            --space-id ${{ env.CONTENTFUL_SPACE_ID }} \
-            --environment-id pr-${{ github.event.pull_request.number }} \
-            --management-token ${{ env.CONTENTFUL_TOKEN }}
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+
+      - name: Run migrations in preview env
+        run: |
+          contentful space migration ./Migrations/index.js \
+            --space-id "$CONTENTFUL_SPACE_ID" \
+            --environment-id pr-${{ github.event.pull_request.number }} \
+            --management-token "$CONTENTFUL_TOKEN"
+        env:
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+
       - name: Validate schema
         env:
           CONTENTFUL_TOKEN: ${{ env.CONTENTFUL_TOKEN }}
           CONTENTFUL_SPACE_ID: ${{ env.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_ENVIRONMENT_ID: pr-${{ github.event.pull_request.number }}
         run: node ./scripts/validateSchema.js
+        
       - name: Cleanup preview environment
         if: always()
         run: |
