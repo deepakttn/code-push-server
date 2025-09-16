@@ -6,13 +6,13 @@ TOKEN="${2:-}"
 API="https://api.contentful.com"
 MASTER_ENV="master"
 
-echo "🔒 Locking $MASTER_ENV environment..."
+echo "Locking $MASTER_ENV environment..."
 
 # Fetch all roles and save backup
 backup_file="roles-backup.json"
 curl -s -H "Authorization: Bearer $TOKEN" "$API/spaces/$SPACE_ID/roles" \
   > "$backup_file"
-echo "📦 Backup saved to $backup_file"
+echo "Backup saved to $backup_file"
 
 # Loop through roles and lock them
 cat "$backup_file" | jq -c '.items[]' | while read -r role; do
@@ -42,5 +42,5 @@ cat "$backup_file" | jq -c '.items[]' | while read -r role; do
       -H "Content-Type: application/vnd.contentful.management.v1+json" \
       -d "$body" >/dev/null
 
-  echo "🔒 Locked $role_name ($role_id) for $MASTER_ENV"
+  echo "Locked $role_name ($role_id) for $MASTER_ENV"
 done
