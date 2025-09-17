@@ -10,15 +10,6 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
-    inputs:
-      source_env:
-        description: "Source environment (for manual merge)"
-        required: true
-        default: master
-      target_env:
-        description: "Target environment (for manual merge)"
-        required: true
-        default: staging
 
 env:
   CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
@@ -27,66 +18,6 @@ env:
   NODE_VERSION: 18
 
 jobs:
-  # Preview env handler
-  preview-env:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Contentful CLI
-        run: npm install -g contentful-cli
-      
-      - name: Install contentful-management
-        run: npm install contentful-management
-
-      - name: Create preview environment
-        run: |
-          contentful space environment create \
-            --space-id "$CONTENTFUL_SPACE_ID" \
-            --management-token "$CONTENTFUL_TOKEN" \
-            --environment-id pr-request-validation \
-            --name "Preview for PR pr-request-validation" \
-            --source master
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-
-      - name: Run migrations in preview env
-        run: |
-          contentful space migration ./Migrations/index.js \
-            --space-id "$CONTENTFUL_SPACE_ID" \
-            --environment-id pr-request-validation \
-            --management-token "$CONTENTFUL_TOKEN" \
-            --yes
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-
-      - name: Validate schema
-        env:
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_ENVIRONMENT_ID: pr-request-validation
-        run: node ./scripts/validateSchema.js
-
-      - name: Cleanup preview environment
-        if: always()
-        run: |
-          contentful space environment delete \
-            --space-id "$CONTENTFUL_SPACE_ID" \
-            --management-token "$CONTENTFUL_TOKEN" \
-            --environment-id pr-request-validation
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-
   # Production Promotion: Lock/Promote/Unlock
   promote-env:
     if: github.event_name == 'push'
@@ -121,7 +52,7 @@ jobs:
           contentful space environment-alias update \
             --space-id "$CONTENTFUL_SPACE_ID" \
             --alias-id master \
-            --target-environment-id testing \
+            --target-environment-id master-2025-09-09 \
             --management-token "$CONTENTFUL_TOKEN"
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
@@ -140,113 +71,4 @@ jobs:
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-
-  # Scheduled backup job
-  backup:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Contentful CLI
-        run: npm install -g contentful-cli
-
-      - name: Export space backup
-        run: |
-          contentful space export \
-            --space-id "$CONTENTFUL_SPACE_ID" \
-            --management-token "$CONTENTFUL_TOKEN" \
-            --environment-id master \
-            --export-dir ./backup \
-            --skip-roles --skip-webhooks
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-
-      - name: Upload backup artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: contentful-backup
-          path: ./backup
-
-  # Manual merge handler (with diff and conflict reporting)
-  merge-env:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup Node.js and tools
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install CLI tools
-        run: |
-          npm install -g contentful-cli contentful-merge
-
-      # - name: Lock target environment
-      #   run: |
-      #     bash ./scripts/contentful-lock-master.sh \
-      #       ${{ env.CONTENTFUL_SPACE_ID }} \
-      #       ${{ env.CONTENTFUL_TOKEN }}
-
-      - name: Diff source and target environments
-        run: |
-          contentful-merge create \
-            --cda-token "$CONTENTFUL_TOKEN" \
-            --space "$CONTENTFUL_SPACE_ID" \
-            --source ${{ github.event.inputs.source_env }} \
-            --target ${{ github.event.inputs.target_env }} \
-            --out ./merge/changeset.json
-        env:
-          CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-
-      - name: Review diff output
-        run: cat ./merge/changeset.json
-
-      - name: Check for unexpected changes (fail if too many changes)
-        run: |
-          # Example check: fail if >3 changed entries
-          CHANGES=$(jq '.changed | length' ./merge/changeset.json)
-          if [ "$CHANGES" -gt 1 ]; then
-            echo "Merge has too many changes ($CHANGES), please review manually."
-            exit 1
-          fi
-
-      - name: Export from source env
-        run: |
-          contentful space export \
-            --space-id "$CONTENTFUL_SPACE_ID" \
-            --environment-id ${{ github.event.inputs.source_env }} \
-            --management-token "$CONTENTFUL_TOKEN" \
-            --export-dir ./merge \
-            --skip-roles --skip-webhooks
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-
-      - name: Import into target env
-        run: |
-          contentful space import \
-            --space-id "$CONTENTFUL_SPACE_ID" \
-            --environment-id ${{ github.event.inputs.target_env }} \
-            --management-token "$CONTENTFUL_TOKEN" \
-            --content-file ./merge/contentful-export.json
-        env:
-          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-        
-
-      # - name: Unlock target environment
-      #   run: |
-      #     bash ./scripts/contentful-unlock-master.sh \
-      #       ${{ env.CONTENTFUL_SPACE_ID }} \
-      #       ${{ env.CONTENTFUL_TOKEN }}
-
-      - name: Report conflicts
-        if: failure()
-        run: echo "Merge failed due to conflicts. Please resolve manually."
         
