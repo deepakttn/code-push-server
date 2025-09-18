@@ -53,6 +53,7 @@ jobs:
             --space-id "$CONTENTFUL_SPACE_ID" \
             --access-token "$CONTENTFUL_TOKEN" \
             --environment-id testing1 \
+            --yes \
             Migrations/index.js
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
