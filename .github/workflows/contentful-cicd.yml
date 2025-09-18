@@ -51,7 +51,7 @@ jobs:
         run: |
           contentful-migration \
             --space-id "$CONTENTFUL_SPACE_ID" \
-            --management-token "$CONTENTFUL_MANAGEMENT_TOKEN" \
+            --access-token "$CONTENTFUL_MANAGEMENT_TOKEN" \
             --environment-id testing1 \
             Migrations/index.js
         env:
