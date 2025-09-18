@@ -23,7 +23,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install Contentful CLI
-        run: npm install -g contentful-cli
+        run: npm install -g contentful-cli contentful-migration
       
       - name: Clone environments
         run: |
