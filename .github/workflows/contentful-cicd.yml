@@ -31,6 +31,7 @@ jobs:
             --space-id "$CONTENTFUL_SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
             --environment-id testing1 \
+            --name "Testing Environment 1" \
             --source-environment master
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
