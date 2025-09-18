@@ -27,11 +27,11 @@ jobs:
       
       - name: Clone environments
         run: |
-          contentful space environment clone \
+          contentful space environment create \
             --space-id "$CONTENTFUL_SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
             --environment-id testing1 \
-            --source-environment-id master
+            --source-environment master
         env:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
