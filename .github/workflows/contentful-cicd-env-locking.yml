@@ -1,0 +1,177 @@
+name: Contentful CI/CD Multi-Brand with Env Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      brand:
+        description: 'Select brand (Contentful space) to deploy'
+        required: true
+        type: choice
+        options:
+          - FitnessFirst
+          - Goodlife
+          - JettsNZ
+          - Zap
+      max_env_count:
+        description: 'Maximum allowed environments in space (excluding master)'
+        required: true
+        default: 5
+      base_env_name:
+        description: 'Base environment name prefix (e.g. master-v)'
+        required: true
+        default: master-v
+
+env:
+  #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+  CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+  MASTER_ALIAS: master
+  #TARGET_ENV: testing1
+  NODE_VERSION: 18
+
+jobs:
+  # Production Promotion: Clone/Migrate/Lock env
+  migrate-contentful:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Contentful CLI
+        run: npm install -g contentful-cli contentful-migration contentful-merge
+      
+      - name: Set SPACE_ID based on brand input
+        id: set_space
+        run: |
+          case "${{ github.event.inputs.brand }}" in
+            FitnessFirst)
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_FITNESS_FIRST }}" >> $GITHUB_ENV
+              ;;
+            Goodlife)
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE }}" >> $GITHUB_ENV
+              ;;
+            JettsNZ)
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_JETTS_NZ }}" >> $GITHUB_ENV
+              ;;
+            Zap)
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_ZAP }}" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unknown brand '${{ github.event.inputs.brand }}'"
+              exit 1
+              ;;
+          esac
+      
+      - name: List current environments and manage limit
+        id: env_management
+        run: |
+          echo "Fetching environments for space $SPACE_ID"
+          env_list_json=$(contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" --format json)
+          echo "$env_list_json" > env_list.json
+
+          echo "Full environment list JSON:"
+          cat env_list.json
+
+          # Parse environment IDs excluding master and master alias
+          mapfile -t env_ids < <(jq -r '.items[].sys.id' env_list.json | grep -vE '^(master|${MASTER_ALIAS})$')
+
+          env_count=${#env_ids[@]}
+          max_env=$(( ${{ github.event.inputs.max_env_count }} ))
+          echo "Current env count: $env_count, max allowed: $max_env"
+
+          if (( env_count >= max_env )); then
+            # Sort env_ids by assumed version ascending (extract version numbers)
+            # Assumes env names like master-v11, master-v12 etc.
+            sorted_env_ids=($(printf '%s\n' "${env_ids[@]}" | sort -t- -k2 -n))
+
+            # Calculate how many to delete - limit to max 2 deletions
+            delete_count=$(( env_count - max_env + 1 ))
+            if (( delete_count > 2 )); then
+              echo "Limiting deletions to maximum 2 environments."
+              delete_count=2
+            fi
+            echo "Deleting $delete_count oldest environment(s):"
+            for (( i=0; i<delete_count; i++ )); do
+              env_to_delete=${sorted_env_ids[$i]}
+              echo "Deleting environment $env_to_delete"
+              contentful space environment delete --space-id "$SPACE_ID" --environment-id "$env_to_delete" --management-token "$CONTENTFUL_TOKEN" --yes
+            done
+          else
+            echo "No need to delete any environments."
+          fi
+
+          # Determine latest version number from remaining envs
+          env_list_updated=$(contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" --format json)
+          mapfile -t updated_env_ids < <(echo "$env_list_updated" | jq -r '.items[].sys.id' | grep "^${{ github.event.inputs.base_env_name }}[0-9]*")
+
+          max_version=0
+          for env_id in "${updated_env_ids[@]}"; do
+            version_num=$(echo "$env_id" | sed -e "s/^${{ github.event.inputs.base_env_name }}//")
+            if (( version_num > max_version )); then
+              max_version=$version_num
+            fi
+          done
+
+          new_env_version=$((max_version + 1))
+          new_env_name="${{ github.event.inputs.base_env_name }}${new_env_version}"
+          echo "New environment to create: $new_env_name"
+          echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
+      
+      - name: Clone environments
+        run: |
+          contentful space environment create \
+            --space-id "$SPACE_ID" \
+            --management-token "$CONTENTFUL_TOKEN" \
+            --environment-id "$NEW_ENV" \
+            --name "$NEW_ENV" \
+            --source-environment "$MASTER_ALIAS"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
+          NEW_ENV: ${{ env.NEW_ENV }}
+
+      # # Run ALL migration scripts in cloned environment using the GitHub Action  
+      # - name: Run migration scripts
+      #   uses: contentful-userland/contentful-action@main
+      #   with:
+      #     space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
+      #     management_api_key: ${{ secrets.CONTENTFUL_TOKEN }}
+      #     migrations_dir: migrations
+      #     environment_id: NEW_ENV
+      
+      #Run a specific migration script
+      - name: Run specific migration script in cloned environment
+        run: |
+          contentful-migration \
+            --space-id "$SPACE_ID" \
+            --access-token "$CONTENTFUL_TOKEN" \
+            --environment-id "$NEW_ENV" \
+            --yes \
+            Migrations/index.js
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          NEW_ENV: ${{ env.NEW_ENV }}
+      
+      - name: Lock master environment
+        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+
+      - name: Upload roles backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: roles-backup.json
+          retention-days: 7

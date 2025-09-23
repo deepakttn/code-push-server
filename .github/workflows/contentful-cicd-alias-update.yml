@@ -1,0 +1,62 @@
+name: Contentful CI/CD Multi-Brand with Env Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      brand:
+        description: 'Select brand (Contentful space) to deploy'
+        required: true
+        type: choice
+        options:
+          - FitnessFirst
+          - Goodlife
+          - JettsNZ
+          - Zap
+      max_env_count:
+        description: 'Maximum allowed environments in space (excluding master)'
+        required: true
+        default: 5
+      base_env_name:
+        description: 'Base environment name prefix (e.g. master-v)'
+        required: true
+        default: master-v
+
+env:
+  #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+  CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+  MASTER_ALIAS: master
+  #TARGET_ENV: testing1
+  NODE_VERSION: 18
+
+jobs:
+  # Production Promotion: Promote/Unlock env
+  migrate-contentful:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update master alias
+        run: |
+          contentful space environment-alias update \
+            --space-id "$SPACE_ID" \
+            --alias-id "$MASTER_ALIAS" \
+            --target-environment-id "$NEW_ENV" \
+            --management-token "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
+          NEW_ENV: ${{ env.NEW_ENV }}
+
+      - name: Download roles backup artifact
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: .
+
+      - name: Unlock master environment
+        if: always()
+        run: bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+        
