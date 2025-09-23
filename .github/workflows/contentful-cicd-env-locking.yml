@@ -80,20 +80,20 @@ jobs:
         run: |
           echo "Listing environments for space $SPACE_ID"
           contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" > env_table.txt
-      
+
           echo "Current environment table:"
           cat env_table.txt
-      
+
           # Count environment rows excluding header, separator, and active environments
           env_count=$(awk -F'|' '$0 ~ /ready/ && $0 !~ /\[active\]/ && $0 !~ /Environment name/ {print $0}' env_table.txt | wc -l)
           echo "Environment count (excluding header/separators and active): $env_count"
-      
+
           max_env=${{ github.event.inputs.max_env_count }}
-      
+
           if (( env_count > max_env )); then
             # Extract oldest 2 env IDs (assuming table is sorted by creation date ascending)
             env_ids=($(awk -F'|' '$0 ~ /ready/ && $0 !~ /\[active\]/ && $0 !~ /Environment name/ {print $3}' env_table.txt | head -2 | xargs))
-      
+
             echo "Deleting oldest 2 environments: ${env_ids[*]}"
             for env in "${env_ids[@]}"; do
               contentful space environment delete --space-id "$SPACE_ID" --environment-id "$env" --management-token "$CONTENTFUL_TOKEN" --yes
@@ -101,11 +101,11 @@ jobs:
           else
             echo "No need to delete any environments."
           fi
-      
+
           # Get active environment alias target name
-          active_env=$(awk -F'|' '/\[active\]/ {print $3}' env_table.txt | head -1)
+          active_env=$(awk -F'|' '$2 ~ /\[active\]/ {print $3}' env_table.txt | xargs)
           echo "Active environment alias target: $active_env"
-      
+
           # Parse version number from active environment name if pattern master-v*
           if [[ "$active_env" =~ master-v([0-9]+) ]]; then
             version=${BASH_REMATCH[1]}
@@ -115,7 +115,7 @@ jobs:
             echo "Active environment not recognized, defaulting new env to master-v1"
             new_env="master-v1"
           fi
-      
+
           echo "New environment to create: $new_env"
           echo "NEW_ENV=$new_env" >> $GITHUB_ENV
         env:
