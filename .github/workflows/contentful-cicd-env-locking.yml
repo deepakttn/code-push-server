@@ -8,10 +8,12 @@ on:
         required: true
         type: choice
         options:
-          - FitnessFirst
-          - Goodlife
-          - JettsNZ
-          - Zap
+          - Dev R&D
+          - Fitness First
+          - Goodlife Website
+          - Gym Website
+          - Jetts New Zealand
+          - Zap Fitness
       max_env_count:
         description: 'Maximum allowed environments in space (excluding master)'
         required: true
