@@ -84,7 +84,7 @@ jobs:
           cat env_list.json
 
           # Count lines that start with '|' but exclude header and separator lines
-          env_count=$(grep -E '^\|' env_table.txt | grep -v -E '^\|[- ]+\|' | wc -l)
+          env_count=$(grep -E '^\|' env_list.json | grep -v -E '^\|[- ]+\|' | wc -l)
           echo "Environment count (excluding header/separators): $env_count"
 
           max_env=${{ github.event.inputs.max_env_count }}
@@ -94,7 +94,7 @@ jobs:
             # Here, simplistic approach: extract oldest env IDs from lines after header separator
 
             # Extract all env IDs (2nd column between |)
-            env_ids=($(awk -F'|' 'NR>3 {print $3}' env_table.txt | head -2))
+            env_ids=($(awk -F'|' 'NR>3 {print $3}' env_list.json | head -2))
 
             echo "Deleting oldest 2 environments: ${env_ids[*]}"
             for env in "${env_ids[@]}"; do
@@ -105,7 +105,7 @@ jobs:
           fi
 
           # Get active environment alias target name
-          active_env=$(awk -F'|' '/\[active\]/ {print $3}' env_table.txt | head -1)
+          active_env=$(awk -F'|' '/\[active\]/ {print $3}' env_list.json | head -1)
           echo "Active environment alias target: $active_env"
 
           # Parse version number from active environment name if pattern master-v*
