@@ -79,7 +79,7 @@ jobs:
         id: manage_envs
         run: |
           echo "Listing environments for space $SPACE_ID"
-          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" --raw > envs.json
+          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" --json > envs.json
 
           cat env_list.json
 
@@ -101,7 +101,7 @@ jobs:
           fi
 
           # Fetch updated JSON after deletion
-          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" --raw > envs_updated.json
+          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" --json > envs_updated.json
 
           # Find active environment (alias target)
           active_env=$(jq -r '.items[] | select(.sys.id=="'"$MASTER_ALIAS"'") | .sys.id' envs_updated.json)
