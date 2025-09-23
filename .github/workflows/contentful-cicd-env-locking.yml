@@ -79,7 +79,7 @@ jobs:
         id: manage_envs
         run: |
           echo "Listing environments for space $SPACE_ID"
-          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" > envs.json
+          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" > env_list.json
 
           cat env_list.json
 
