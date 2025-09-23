@@ -25,7 +25,7 @@ on:
 
 env:
   #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
-  CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+  CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
   MASTER_ALIAS: master
   #TARGET_ENV: testing1
   NODE_VERSION: 18
@@ -86,7 +86,7 @@ jobs:
           cat env_list.json
 
           # Parse environment IDs excluding master and master alias
-          mapfile -t env_ids < <(jq -r '.items[].sys.id' env_list.json | grep -vE '^(master|${MASTER_ALIAS})$')
+          mapfile -t env_ids < <(jq -r '.items[].sys.id' env_list.json | grep -vE "^(master|$MASTER_ALIAS)$")
 
           env_count=${#env_ids[@]}
           max_env=$(( ${{ github.event.inputs.max_env_count }} ))
@@ -107,14 +107,14 @@ jobs:
             for (( i=0; i<delete_count; i++ )); do
               env_to_delete=${sorted_env_ids[$i]}
               echo "Deleting environment $env_to_delete"
-              contentful space environment delete --space-id "$SPACE_ID" --environment-id "$env_to_delete" --management-token "$CONTENTFUL_TOKEN" --yes
+              contentful space environment delete --space-id "$SPACE_ID" --environment-id "$env_to_delete" --management-token "${{ secrets.CONTENTFUL_TOKEN }}" --yes
             done
           else
             echo "No need to delete any environments."
           fi
 
           # Determine latest version number from remaining envs
-          env_list_updated=$(contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN")
+          env_list_updated=$(contentful space environment list --space-id "$SPACE_ID" --management-token "${{ secrets.CONTENTFUL_TOKEN }}")
           mapfile -t updated_env_ids < <(echo "$env_list_updated" | jq -r '.items[].sys.id' | grep "^${{ github.event.inputs.base_env_name }}[0-9]*")
 
           max_version=0
