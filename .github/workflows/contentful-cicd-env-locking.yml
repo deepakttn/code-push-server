@@ -85,8 +85,8 @@ jobs:
           echo "Full environment list JSON:"
           cat env_list.json
 
-          # Parse environment IDs excluding master and master alias using jq only
-          mapfile -t env_ids < <(jq -r --arg master "$MASTER_ALIAS" '[.items[].sys.id | select(. != "master" and . != $master)] | .[]' env_list.json)
+          # Parse environment IDs excluding master, alias, and any with [active] in name
+          mapfile -t env_ids < <(echo "$env_list_json" | jq -r --arg master "$MASTER_ALIAS" '[.items[] | select(.sys.id != "master" and .sys.id != $master and (.name | test("\\[active\\]") | not)) | .sys.id] | .[]')
 
           env_count=${#env_ids[@]}
           max_env=$(( ${{ github.event.inputs.max_env_count }} ))
@@ -117,7 +117,7 @@ jobs:
 
           base_env_name="${{ github.event.inputs.base_env_name }}"
 
-          mapfile -t updated_env_ids < <(echo "$env_list_updated" | jq -r --arg base "$base_env_name" '.items[].sys.id | select(startswith($base))')
+          mapfile -t updated_env_ids < <(echo "$env_list_updated" | jq -r --arg base "$base_env_name" '.items[] | select((.sys.id | startswith($base)) and (.name | test("\\[active\\]") | not)) | .sys.id')
 
           max_version=0
           for env_id in "${updated_env_ids[@]}"; do
