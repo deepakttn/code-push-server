@@ -79,14 +79,16 @@ jobs:
         id: manage_envs
         run: |
           echo "Listing environments for space $SPACE_ID"
-          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" > envs.json
-      
+          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" --raw > envs.json
+
+          cat env_list.json
+
           # Count total environments excluding 'master' & alias (optional)
           total_envs=$(jq '[.items[] | select(.sys.id != "master" and .sys.id != "'"$MASTER_ALIAS"'")] | length' envs.json)
           max_allowed=$(( ${{ github.event.inputs.max_env_count }} ))
           echo "Total environments (excluding master and alias): $total_envs"
           echo "Maximum allowed environments: $max_allowed"
-      
+
           # If total exceeds max allowed, delete oldest 2
           if (( total_envs > max_allowed )); then
             oldest_envs=$(jq -r '[.items[] | select(.sys.id != "master" and .sys.id != "'"$MASTER_ALIAS"'")] | sort_by(.sys.createdAt) | .[:2] | .[].sys.id' envs.json)
@@ -97,10 +99,10 @@ jobs:
           else
             echo "No need to delete environments."
           fi
-      
+
           # Fetch updated JSON after deletion
-          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" > envs_updated.json
-      
+          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" --raw > envs_updated.json
+
           # Find active environment (alias target)
           active_env=$(jq -r '.items[] | select(.sys.id=="'"$MASTER_ALIAS"'") | .sys.id' envs_updated.json)
           if [[ "$active_env" == "master" ]]; then
@@ -113,7 +115,7 @@ jobs:
             # You can add custom logic here if alias points elsewhere
             new_env="master-v1"
           fi
-      
+
           echo "New environment to create: $new_env"
           echo "NEW_ENV=$new_env" >> $GITHUB_ENV
         env:
