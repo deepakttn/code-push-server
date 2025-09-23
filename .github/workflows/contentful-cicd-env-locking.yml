@@ -51,23 +51,23 @@ jobs:
         id: set_space
         run: |
           case "${{ github.event.inputs.brand }}" in
-            Fitness First)
+            "Fitness First")
               echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_FITNESS_FIRST }}" >> $GITHUB_ENV
               ;;
-            Dev R&D)
+            "Dev R&D")
               echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID }}" >> $GITHUB_ENV
               ;;
-            Goodlife Website)
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_Goodlife_Website }}" >> $GITHUB_ENV
+            "Goodlife Website")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE_WEBSITE }}" >> $GITHUB_ENV
               ;;
-            Gym Website)
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_Gym_Website }}" >> $GITHUB_ENV
+            "Gym Website")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GYM_WEBSITE }}" >> $GITHUB_ENV
               ;;
-            Jetts New Zealand)
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_Jetts_New_Zealand }}" >> $GITHUB_ENV
+            "Jetts New Zealand")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_JETTS_NEW_ZEALAND }}" >> $GITHUB_ENV
               ;;
-            Zap Fitness)
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_Zap_Fitness }}" >> $GITHUB_ENV
+            "Zap Fitness")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_ZAP_FITNESS }}" >> $GITHUB_ENV
               ;;
             *)
               echo "Unknown brand '${{ github.event.inputs.brand }}'"
