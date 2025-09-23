@@ -85,10 +85,10 @@ jobs:
           echo "Full environment list JSON:"
           cat env_list.json
 
-          # Parse environment IDs excluding master and master alias
-          mapfile -t env_ids < <(jq -r '.items[].sys.id' env_list.json | grep -vE "^(master|$MASTER_ALIAS)$")
+          # # Parse environment IDs excluding master and master alias
+          # mapfile -t env_ids < <(jq -r '.items[].sys.id' env_list.json | grep -vE "^(master|$MASTER_ALIAS)$")
 
-          env_count=${#env_ids[@]}
+          env_count=$(jq '[.items[] | select(.sys.id != "master" and .sys.id != "'$MASTER_ALIAS'")] | length' env_list.json)
           max_env=$(( ${{ github.event.inputs.max_env_count }} ))
           echo "Current env count: $env_count, max allowed: $max_env"
 
