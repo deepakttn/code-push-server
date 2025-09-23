@@ -25,7 +25,7 @@ env:
   #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
   CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
   MASTER_ALIAS: master
-  #TARGET_ENV: testing1
+  TARGET_ENV: testing1
   NODE_VERSION: 18
 
 jobs:
@@ -33,18 +33,50 @@ jobs:
   migrate-contentful:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Contentful CLI
+        run: npm install -g contentful-cli contentful-migration contentful-merge
+      
+      - name: Set SPACE_ID based on brand input
+        id: set_space
+        run: |
+          case "${{ github.event.inputs.brand }}" in
+            FitnessFirst)
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_FITNESS_FIRST }}" >> $GITHUB_ENV
+              ;;
+            Goodlife)
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE }}" >> $GITHUB_ENV
+              ;;
+            JettsNZ)
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_JETTS_NZ }}" >> $GITHUB_ENV
+              ;;
+            Zap)
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_ZAP }}" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unknown brand '${{ github.event.inputs.brand }}'"
+              exit 1
+              ;;
+          esac
       - name: Update master alias
         run: |
           contentful space environment-alias update \
             --space-id "$SPACE_ID" \
             --alias-id "$MASTER_ALIAS" \
-            --target-environment-id "$NEW_ENV" \
+            --target-environment-id "$TARGET_ENV" \
             --management-token "$CONTENTFUL_TOKEN"
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
-          NEW_ENV: ${{ env.NEW_ENV }}
+          TARGET_ENV: ${{ secrets.TARGET_ENV }}
 
       - name: Download roles backup artifact
         if: always()
