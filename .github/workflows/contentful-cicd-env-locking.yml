@@ -79,46 +79,46 @@ jobs:
         id: env_management
         run: |
           echo "Fetching environments for space $SPACE_ID"
-          env_list_json=$(contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN")
+          env_list_json=$(contentful space environment list --space-id "$SPACE_ID" --management-token "${{ secrets.CONTENTFUL_TOKEN }}")
           echo "$env_list_json" > env_list.json
-      
+
           echo "Full environment list JSON:"
           cat env_list.json
-      
+
           # Parse environment IDs excluding master and master alias using jq only
           mapfile -t env_ids < <(jq -r --arg master "$MASTER_ALIAS" '[.items[].sys.id | select(. != "master" and . != $master)] | .[]' env_list.json)
-      
+
           env_count=${#env_ids[@]}
           max_env=$(( ${{ github.event.inputs.max_env_count }} ))
           echo "Current env count (excluding master and alias): $env_count, max allowed: $max_env"
-      
+
           if (( env_count >= max_env )); then
             # Sort env_ids numerically ascending by version (assuming pattern baseEnvName + number)
             sorted_env_ids=($(printf '%s\n' "${env_ids[@]}" | sort -t- -k2 -n))
-      
+
             delete_count=$(( env_count - max_env + 1 ))
             if (( delete_count > 2 )); then
               echo "Limiting deletions to maximum 2 environments."
               delete_count=2
             fi
-      
+
             echo "Deleting $delete_count oldest environment(s):"
             for (( i=0; i<delete_count; i++ )); do
               env_to_delete=${sorted_env_ids[$i]}
               echo "Deleting environment $env_to_delete"
-              contentful space environment delete --space-id "$SPACE_ID" --environment-id "$env_to_delete" --management-token "$CONTENTFUL_TOKEN" --yes
+              contentful space environment delete --space-id "$SPACE_ID" --environment-id "$env_to_delete" --management-token "${{ secrets.CONTENTFUL_TOKEN }}" --yes
             done
           else
             echo "No need to delete any environments."
           fi
-      
+
           # Fetch updated list after deletions
-          env_list_updated=$(contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN")
-      
+          env_list_updated=$(contentful space environment list --space-id "$SPACE_ID" --management-token "${{ secrets.CONTENTFUL_TOKEN }}")
+
           base_env_name="${{ github.event.inputs.base_env_name }}"
-      
+
           mapfile -t updated_env_ids < <(echo "$env_list_updated" | jq -r --arg base "$base_env_name" '.items[].sys.id | select(startswith($base))')
-      
+
           max_version=0
           for env_id in "${updated_env_ids[@]}"; do
             version_num=$(echo "$env_id" | sed -e "s/^${base_env_name}//")
@@ -126,13 +126,13 @@ jobs:
               max_version=$version_num
             fi
           done
-      
+
           new_env_version=$((max_version + 1))
           new_env_name="${base_env_name}${new_env_version}"
           echo "New environment to create: $new_env_name"
           echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
         env:
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           SPACE_ID: ${{ env.SPACE_ID }}
 
