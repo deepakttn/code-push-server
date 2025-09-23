@@ -130,9 +130,9 @@ jobs:
           echo "New environment to create: $new_env_name"
           echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
         env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+          CONTENTFUL_TOKEN: ${{ env.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
+          SPACE_ID: ${{ env.SPACE_ID }}
       
       - name: Clone environments
         run: |
