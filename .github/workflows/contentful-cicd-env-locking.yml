@@ -1,4 +1,4 @@
-name: Contentful CI/CD Multi-Brand with Env Management
+name: Contentful CI/CD Env Locking
 
 on:
   workflow_dispatch:
