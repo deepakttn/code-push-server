@@ -139,7 +139,7 @@ jobs:
           contentful space environment create \
             --space-id "$SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
-            --environment-id "$NEW_ENV" \
+            --environment-id "testing3" \
             --name "$NEW_ENV" \
             --source-environment "$MASTER_ALIAS"
         env:
