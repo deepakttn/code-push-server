@@ -139,8 +139,8 @@ jobs:
           #   new_env="master-v1"
           # fi
 
-          echo "New environment to create: $new_env"
-          echo "NEW_ENV=$new_env" >> $GITHUB_ENV
+          echo "New environment to create: $new_env_name"
+          echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
         env:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
