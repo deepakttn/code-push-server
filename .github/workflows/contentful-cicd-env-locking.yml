@@ -100,24 +100,22 @@ jobs:
             echo "No need to delete any environments."
           fi
 
-          # Find all environment names that look like master-vN (strip [active] and spaces)
+          # Find all environment names that look like master-vN
           highest=0
           mapfile -t env_names < <(awk -F'|' '$0 ~ /ready/ && $0 !~ /Environment name/ {
-            for (i=1; i<=NF; i++) {
-              field=$i;
-              gsub(/^[ \t]+|[ \t]+$/, "", field);    # trim whitespace
-              gsub(/ \[active\]/, "", field);        # strip [active]
-              if (field ~ /^master-v[0-9]+$/) {
-                print field;
-              }
+            n=$2
+            gsub(/^[ \t]+|[ \t]+$/, "", n)       # trim whitespace
+            gsub(/ \[active\]/, "", n)           # strip [active]
+            if (n ~ /^master-v[0-9]+$/) {
+              print n
             }
           }' env_table.txt)
           
           echo "Found env names:"
           printf '%s\n' "${env_names[@]}"
-
+          
           for env_name in "${env_names[@]}"; do
-            if [[ $env_name =~ master-v([0-9]+) ]]; then
+            if [[ $env_name =~ ^master-v([0-9]+)$ ]]; then
               num=${BASH_REMATCH[1]}
               (( num > highest )) && highest=$num
             fi
