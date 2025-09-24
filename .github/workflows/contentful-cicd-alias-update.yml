@@ -19,10 +19,8 @@ on:
       - completed
 
 env:
-  #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
   CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
   MASTER_ALIAS: master
-  TARGET_ENV: master-v2
   NODE_VERSION: 18
 
 jobs:
@@ -68,6 +66,35 @@ jobs:
               exit 1
               ;;
           esac
+      
+      - name: Fetch latest environment version
+        id: fetch_env
+        run: |
+          echo "Fetching environments for SPACE_ID=$SPACE_ID"
+
+          # Fetch env list from Contentful API
+          curl -s \
+            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.contentful.com/spaces/$SPACE_ID/environments" \
+            > envs_raw.json
+
+          # Find highest version like master-vN
+          latest_env=$(jq -r '[.items[] | select(.name | test("^master-v[0-9]+$")) 
+                              | .name 
+                              | capture("master-v(?<num>[0-9]+)").num | tonumber] 
+                              | max' envs_raw.json)
+
+          if [ "$latest_env" = "null" ]; then
+            echo "No versioned env found, defaulting to master"
+            target_env="master"
+          else
+            target_env="master-v${latest_env}"
+          fi
+
+          echo "TARGET_ENV=$target_env" >> $GITHUB_ENV
+          echo "Resolved TARGET_ENV=$target_env"
+
       - name: Update master alias
         run: |
           contentful space environment-alias update \
@@ -86,7 +113,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: contentful-roles-backup
-          path: .
+          path: ./rollback
 
       - name: Unlock master environment
         if: always()
