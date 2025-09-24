@@ -102,19 +102,38 @@ jobs:
             echo "No need to delete any environments."
           fi
 
-          # Find row where env id is 'master', extract and clean the env name
-          active_env_name=$(awk -F'|' '$3 ~ /master/ {name=$2; gsub(/^[ \t]+|[ \t]+$/, "", name); sub(/ \[active\]/, "", name); print name}' env_table.txt | xargs)
-          echo "Active environment name: $active_env_name"
+          # Print all environment names in table (for debugging)
+          awk -F'|' 'NR>2 {print "ENV NAME:[" $2 "]"}' env_table.txt
 
-          # Parse version number from active environment name if pattern master-v*
-          if [[ "$active_env_name" =~ master-v([0-9]+) ]]; then
-            version=${BASH_REMATCH[1]}
-            new_version=$((version + 1))
-            new_env="master-v$new_version"
+          # Find the highest versioned master-vN in names
+          highest=0
+          for env_name in $(awk -F'|' 'NR>2 {gsub(/^[ \t]+|[ \t]+$/, "", $2); if ($2 ~ /^master-v[0-9]+$/ || $2 ~ /^master-v[0-9]+ \[active\]$/) {sub(/ \[active\]/,"",$2); print $2}}' env_table.txt)
+          do
+            if [[ $env_name =~ master-v([0-9]+) ]]; then
+              num=${BASH_REMATCH[1]}
+              (( num > highest )) && highest=$num
+            fi
+          done
+
+          if (( highest > 0 )); then
+            new_env_name="master-v$((highest + 1))"
           else
-            echo "Active environment name not in versioned format, defaulting to master-v1"
-            new_env="master-v1"
+            new_env_name="master-v1"
           fi
+
+          # # Find row where env id is 'master', extract and clean the env name
+          # active_env_name=$(awk -F'|' '$3 ~ /master/ {name=$2; gsub(/^[ \t]+|[ \t]+$/, "", name); sub(/ \[active\]/, "", name); print name}' env_table.txt | xargs)
+          # echo "Active environment name: $active_env_name"
+
+          # # Parse version number from active environment name if pattern master-v*
+          # if [[ "$active_env_name" =~ master-v([0-9]+) ]]; then
+          #   version=${BASH_REMATCH[1]}
+          #   new_version=$((version + 1))
+          #   new_env="master-v$new_version"
+          # else
+          #   echo "Active environment name not in versioned format, defaulting to master-v1"
+          #   new_env="master-v1"
+          # fi
 
           echo "New environment to create: $new_env"
           echo "NEW_ENV=$new_env" >> $GITHUB_ENV
