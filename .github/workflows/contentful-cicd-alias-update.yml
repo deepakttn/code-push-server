@@ -74,7 +74,7 @@ jobs:
 
           # Fetch env list
           curl -s \
-            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            -H "Authorization: Bearer ${{ secrets.CONTENTFUL_TOKEN }} \
             -H "Content-Type: application/json" \
             "https://api.contentful.com/spaces/$SPACE_ID/environments" \
             > envs_raw.json
