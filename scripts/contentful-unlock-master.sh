@@ -4,7 +4,7 @@ set -euo pipefail
 SPACE_ID="$1"
 TOKEN="$2"
 API="https://api.contentful.com"
-BACKUP_FILE="rollback/roles-backup.json"
+BACKUP_FILE="roles-backup.json"
 
 if [[ ! -f "$BACKUP_FILE" ]]; then
   echo "Backup file $BACKUP_FILE not found! Cannot unlock."

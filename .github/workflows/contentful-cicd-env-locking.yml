@@ -176,19 +176,19 @@ jobs:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
       
-      - name: Commit rollback JSON to repo
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add rollback/roles-backup.json
-          git commit -m "Update roles rollback backup"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Commit rollback JSON to repo
+      #   run: |
+      #     git config user.name "github-actions"
+      #     git config user.email "github-actions@github.com"
+      #     git add rollback/roles-backup.json
+      #     git commit -m "Update roles rollback backup"
+      #     git push
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload roles backup artifact
         uses: actions/upload-artifact@v4
         with:
           name: contentful-roles-backup
-          path: roles-backup.json
+          path: ./roles-backup.json
           retention-days: 7

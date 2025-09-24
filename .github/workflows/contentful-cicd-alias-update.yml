@@ -123,20 +123,20 @@ jobs:
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           TARGET_ENV: ${{ env.TARGET_ENV }}
       
-      - name: Use rollback JSON
-        run: |
-          echo "Contents of rollback JSON:"
-          cat rollback/roles-backup.json
-          # You can add logic here to restore roles if needed
-        env:
-          ROLLBACK_JSON_PATH: rollback/roles-backup.json
+      # - name: Use rollback JSON
+      #   run: |
+      #     echo "Contents of rollback JSON:"
+      #     cat rollback/roles-backup.json
+      #     # You can add logic here to restore roles if needed
+      #   env:
+      #     ROLLBACK_JSON_PATH: rollback/roles-backup.json
 
-      # - name: Download roles backup artifact
-      #   if: always()
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: contentful-roles-backup
-      #     path: ./rollback
+      - name: Download roles backup artifact
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: .
 
       - name: Unlock master environment
         if: always()
