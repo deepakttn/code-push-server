@@ -103,7 +103,16 @@ jobs:
           fi
 
           # Get active environment alias target name
-          active_env_name=$(awk -F'|' '$2 ~ /\[active\]/ {gsub(/^\s+|\s+$/, "", $2); sub(/ \[active\]/,"",$2); print $2}' env_table.txt)
+          active_env_name=$(awk -F'|' '
+            {
+              gsub(/^[ \t]+|[ \t]+$/, "", $2);
+              if ($2 ~ /\[active\]/) {
+                env_name=$2
+                sub(/ \[active\]/, "", env_name)
+                print env_name
+              }
+            }
+          ' env_table.txt | xargs)
           echo "Active environment name: $active_env_name"
 
           # Parse version number from active environment name if pattern master-v*
