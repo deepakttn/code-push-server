@@ -103,7 +103,7 @@ jobs:
           fi
 
           # Print all environment names in table (for debugging)
-          awk -F'|' '($0 ~ /ready/ && $0 !~ /Environment name/) { name = $2; gsub(/^[ \t]+|[ \t]+$/, "", name); # trim gsub(/ \[active\]/, "", name); # Remove [active] print name }' env_table.txt
+          awk -F'|' '($0 ~ /ready/ && $0 !~ /Environment name/) {n=$2; gsub(/^[ \t]+|[ \t]+$/, "", n); gsub(/ \[active\]/, "", n); print n}' env_table.txt | wc -l
 
           # Find the highest versioned master-vN in names
           highest=0
