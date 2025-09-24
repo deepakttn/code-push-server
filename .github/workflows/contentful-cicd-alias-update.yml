@@ -109,7 +109,20 @@ jobs:
         env:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           SPACE_ID: ${{ env.SPACE_ID }}
+      
+      - name: Lock master environment
+        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
+      - name: Upload roles backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: ./roles-backup.json
+          retention-days: 7
+      
       - name: Update master alias
         run: |
           contentful space environment-alias update \
@@ -122,14 +135,6 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           TARGET_ENV: ${{ env.TARGET_ENV }}
-      
-      # - name: Use rollback JSON
-      #   run: |
-      #     echo "Contents of rollback JSON:"
-      #     cat rollback/roles-backup.json
-      #     # You can add logic here to restore roles if needed
-      #   env:
-      #     ROLLBACK_JSON_PATH: rollback/roles-backup.json
 
       - name: Download roles backup artifact
         if: always()
@@ -144,4 +149,3 @@ jobs:
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-        
