@@ -95,9 +95,12 @@ jobs:
           else
             target_env="$latest_env"
           fi
-          
+
           echo "TARGET_ENV=$target_env" >> $GITHUB_ENV
           echo "Resolved TARGET_ENV=$target_env"
+        env:
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          SPACE_ID: ${{ env.SPACE_ID }}
 
       - name: Update master alias
         run: |
