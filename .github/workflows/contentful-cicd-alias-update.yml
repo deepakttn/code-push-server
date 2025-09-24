@@ -19,7 +19,7 @@ on:
       - completed
 
 env:
-  CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
+  CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
   MASTER_ALIAS: master
   NODE_VERSION: 18
 
