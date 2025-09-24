@@ -9,7 +9,8 @@ MASTER_ENV="master"
 echo "Locking $MASTER_ENV environment..."
 
 # Fetch all roles and save backup
-backup_file="roles-backup.json"
+backup_file="rollback/roles-backup.json"
+mkdir -p rollback
 curl -s -H "Authorization: Bearer $TOKEN" "$API/spaces/$SPACE_ID/roles" \
   > "$backup_file"
 echo "Backup saved to $backup_file"
