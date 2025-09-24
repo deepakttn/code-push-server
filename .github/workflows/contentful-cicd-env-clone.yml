@@ -1,4 +1,4 @@
-name: Contentful CI/CD Env Locking
+name: Contentful CI/CD Env Clone
 
 on:
   workflow_dispatch:
