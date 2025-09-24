@@ -21,7 +21,7 @@ on:
       base_env_name:
         description: 'Base environment name prefix (e.g. master-v)'
         required: true
-        default: master-v
+        default: master
 
 env:
   #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}

@@ -19,7 +19,7 @@ env:
   #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
   CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_MANAGEMENT_TOKEN }}
   MASTER_ALIAS: master
-  TARGET_ENV: testing1
+  TARGET_ENV: master-v2
   NODE_VERSION: 18
 
 jobs:
