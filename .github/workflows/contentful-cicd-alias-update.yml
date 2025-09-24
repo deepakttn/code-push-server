@@ -14,6 +14,9 @@ on:
           - Gym Website
           - Jetts New Zealand
           - Zap Fitness
+    workflows: ["Contentful CI/CD Env Locking"]
+    types:
+      - completed
 
 env:
   #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
@@ -76,7 +79,7 @@ jobs:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
-          TARGET_ENV: ${{ secrets.TARGET_ENV }}
+          TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Download roles backup artifact
         if: always()
