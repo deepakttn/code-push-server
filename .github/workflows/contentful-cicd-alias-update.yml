@@ -8,18 +8,12 @@ on:
         required: true
         type: choice
         options:
-          - FitnessFirst
-          - Goodlife
-          - JettsNZ
-          - Zap
-      max_env_count:
-        description: 'Maximum allowed environments in space (excluding master)'
-        required: true
-        default: 5
-      base_env_name:
-        description: 'Base environment name prefix (e.g. master-v)'
-        required: true
-        default: master-v
+          - Dev R&D
+          - Fitness First
+          - Goodlife Website
+          - Gym Website
+          - Jetts New Zealand
+          - Zap Fitness
 
 env:
   #CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
@@ -48,17 +42,23 @@ jobs:
         id: set_space
         run: |
           case "${{ github.event.inputs.brand }}" in
-            FitnessFirst)
+            "Fitness First")
               echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_FITNESS_FIRST }}" >> $GITHUB_ENV
               ;;
-            Goodlife)
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE }}" >> $GITHUB_ENV
+            "Dev R&D")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_Dev_R&D }}" >> $GITHUB_ENV
               ;;
-            JettsNZ)
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_JETTS_NZ }}" >> $GITHUB_ENV
+            "Goodlife Website")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE_WEBSITE }}" >> $GITHUB_ENV
               ;;
-            Zap)
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_ZAP }}" >> $GITHUB_ENV
+            "Gym Website")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GYM_WEBSITE }}" >> $GITHUB_ENV
+              ;;
+            "Jetts New Zealand")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_JETTS_NEW_ZEALAND }}" >> $GITHUB_ENV
+              ;;
+            "Zap Fitness")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_ZAP_FITNESS }}" >> $GITHUB_ENV
               ;;
             *)
               echo "Unknown brand '${{ github.event.inputs.brand }}'"
