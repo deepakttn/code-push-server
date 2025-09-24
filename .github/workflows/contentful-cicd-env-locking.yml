@@ -105,15 +105,25 @@ jobs:
           # Print all environment names in table (for debugging)
           awk -F'|' '($0 ~ /ready/ && $0 !~ /Environment name/) {n=$2; gsub(/^[ \t]+|[ \t]+$/, "", n); gsub(/ \[active\]/, "", n); print n}' env_table.txt | wc -l
 
-          # Find all environment names that look like master-vN (with or without [active])
-          highest=0
+          # Print and count all version-like environment names (excluding [active])
+          env_names=()
           for env_name in $(awk -F'|' '$0 ~ /ready/ && $0 !~ /Environment name/ {
-            field=$2;
-            gsub(/^[ \t]+|[ \t]+$/, "", field);
-            gsub(/ \[active\]/, "", field);
-            print field
+              n = $2; gsub(/^[ \t]+|[ \t]+$/, "", n); gsub(/ \[active\]/, "", n); print n
           }' env_table.txt); do
-            if [[ $env_name =~ master-v([0-9]+) ]]; then
+              env_names+=("$env_name")
+          done
+
+          # Print names found
+          echo "Found environment names:"
+          for name in "${env_names[@]}"; do
+            echo "  $name"
+          done
+          echo "Total parsed env names: ${#env_names[@]}"
+
+          # Find highest master-vN version
+          highest=0
+          for name in "${env_names[@]}"; do
+            if [[ $name =~ master-v([0-9]+) ]]; then
               num=${BASH_REMATCH[1]}
               (( num > highest )) && highest=$num
             fi
@@ -124,6 +134,9 @@ jobs:
           else
             new_env_name="master-v1"
           fi
+
+          echo "New environment to create: $new_env_name"
+          echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
 
           # # Find row where env id is 'master', extract and clean the env name
           # active_env_name=$(awk -F'|' '$3 ~ /master/ {name=$2; gsub(/^[ \t]+|[ \t]+$/, "", name); sub(/ \[active\]/, "", name); print name}' env_table.txt | xargs)
@@ -138,9 +151,6 @@ jobs:
           #   echo "Active environment name not in versioned format, defaulting to master-v1"
           #   new_env="master-v1"
           # fi
-
-          echo "New environment to create: $new_env_name"
-          echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
         env:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
