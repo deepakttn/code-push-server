@@ -78,55 +78,53 @@ jobs:
       - name: Manage environments and create new version
         id: manage_envs
         run: |
-          echo "Listing environments for space $SPACE_ID"
-          contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" > env_table.txt
+          echo "Fetching environments via Contentful API for space $SPACE_ID"
 
-          echo "Current environment table:"
-          cat env_table.txt
+          # Fetch env list
+          curl -s \
+            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.contentful.com/spaces/$SPACE_ID/environments" \
+            > envs_raw.json
 
-          # Count environment rows excluding header, separator, and active environments
-          env_count=$(awk -F'|' '$0 ~ /ready/ && $0 !~ /\[active\]/ && $0 !~ /Environment name/ {print $0}' env_table.txt | wc -l)
-          echo "Environment count (excluding header/separators and active): $env_count"
+          # Extract required data
+          jq '[ .items[] | { name: .name, id: .sys.id, createdAt: .sys.createdAt } ]' envs_raw.json > envs_parsed.json
+
+          echo "Parsed environments:"
+          jq -r '.[] | "\(.name) | \(.id) | \(.createdAt)"' envs_parsed.json
+
+          # Count non-master envs
+          base="${{ github.event.inputs.base_env_name }}"
+          master_alias="${{ env.MASTER_ALIAS }}"
+          env_count=$(jq "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] | length" envs_parsed.json)
+          echo "Count of relevant environments: $env_count"
 
           max_env=${{ github.event.inputs.max_env_count }}
 
           if (( env_count > max_env )); then
-            env_ids=($(awk -F'|' '$0 ~ /ready/ && $0 !~ /\[active\]/ && $0 !~ /Environment name/ {print $3}' env_table.txt | head -2 | xargs))
-            echo "Deleting oldest 2 environments: ${env_ids[*]}"
-            for env in "${env_ids[@]}"; do
-              contentful space environment delete --space-id "$SPACE_ID" --environment-id "$env" --management-token "$CONTENTFUL_TOKEN" --yes
+            echo "Deleting oldest environments to maintain limit"
+            jq -r "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] 
+                     | sort_by(.createdAt) 
+                     | .[0:${2}] 
+                     | .[].id" envs_parsed.json | while read env_id; do
+              echo "Deleting env $env_id"
+              contentful space environment delete \
+                --space-id "$SPACE_ID" \
+                --environment-id "$env_id" \
+                --management-token "$CONTENTFUL_TOKEN" \
+                --yes
             done
           else
-            echo "No need to delete any environments."
+            echo "No deletion needed"
           fi
 
-          # Find all environment names that look like master-vN
-          highest=0
-          mapfile -t env_names < <(awk -F'|' '$0 ~ /ready/ && $0 !~ /Environment name/ {
-            n=$2
-            gsub(/^[ \t]+|[ \t]+$/, "", n)       # trim whitespace
-            gsub(/ \[active\]/, "", n)           # strip [active]
-            if (n ~ /^master-v[0-9]+$/) {
-              print n
-            }
-          }' env_table.txt)
-          
-          echo "Found env names:"
-          printf '%s\n' "${env_names[@]}"
-          
-          for env_name in "${env_names[@]}"; do
-            if [[ $env_name =~ ^master-v([0-9]+)$ ]]; then
-              num=${BASH_REMATCH[1]}
-              (( num > highest )) && highest=$num
-            fi
-          done
-          
-          if (( highest > 0 )); then
-            new_env_name="master-v$((highest + 1))"
-          else
-            new_env_name="master-v1"
-          fi
-          
+          # Find highest version among base-envs
+          highest=$(jq -r --arg base "$base" \
+            '[ .[] | select(.name | test("^" + $base + "-v[0-9]+$")) 
+               | (.name | capture(".*-v(?<num>[0-9]+)").num | tonumber) ] 
+             | max // 0' envs_parsed.json)
+
+          new_env_name="${base}-v$((highest + 1))"
           echo "New environment to create: $new_env_name"
           echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
         env:
