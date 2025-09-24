@@ -70,28 +70,32 @@ jobs:
       - name: Fetch latest environment version
         id: fetch_env
         run: |
-          echo "Fetching environments for SPACE_ID=$SPACE_ID"
+          echo "Fetching environments via Contentful API for space $SPACE_ID"
 
-          # Fetch env list from Contentful API
+          # Fetch env list
           curl -s \
             -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             -H "Content-Type: application/json" \
             "https://api.contentful.com/spaces/$SPACE_ID/environments" \
             > envs_raw.json
+          
+          cat envs_raw.json
 
-          # Find highest version like master-vN
-          latest_env=$(jq -r '[.items[] | select(.name | test("^master-v[0-9]+$")) 
-                              | .name 
-                              | capture("master-v(?<num>[0-9]+)").num | tonumber] 
-                              | max' envs_raw.json)
+          # Extract environments matching base pattern master-vN and sort by creation date
+          latest_env=$(jq -r '[.items[] 
+                                | select(.name | test("^master-v[0-9]+$")) 
+                                | {name: .name, createdAt: .sys.createdAt}] 
+                               | sort_by(.createdAt) 
+                               | last 
+                               | .name' envs_raw.json)
 
-          if [ "$latest_env" = "null" ]; then
+          if [ -z "$latest_env" ] || [ "$latest_env" = "null" ]; then
             echo "No versioned env found, defaulting to master"
             target_env="master"
           else
-            target_env="master-v${latest_env}"
+            target_env="$latest_env"
           fi
-
+          
           echo "TARGET_ENV=$target_env" >> $GITHUB_ENV
           echo "Resolved TARGET_ENV=$target_env"
 
