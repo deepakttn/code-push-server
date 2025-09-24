@@ -46,7 +46,7 @@ jobs:
               echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_FITNESS_FIRST }}" >> $GITHUB_ENV
               ;;
             "Dev R&D")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_Dev_R&D }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Goodlife Website")
               echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE_WEBSITE }}" >> $GITHUB_ENV
