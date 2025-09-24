@@ -91,9 +91,7 @@ jobs:
           max_env=${{ github.event.inputs.max_env_count }}
 
           if (( env_count > max_env )); then
-            # Extract oldest 2 env IDs (assuming table is sorted by creation date ascending)
             env_ids=($(awk -F'|' '$0 ~ /ready/ && $0 !~ /\[active\]/ && $0 !~ /Environment name/ {print $3}' env_table.txt | head -2 | xargs))
-
             echo "Deleting oldest 2 environments: ${env_ids[*]}"
             for env in "${env_ids[@]}"; do
               contentful space environment delete --space-id "$SPACE_ID" --environment-id "$env" --management-token "$CONTENTFUL_TOKEN" --yes
@@ -102,20 +100,13 @@ jobs:
             echo "No need to delete any environments."
           fi
 
-          # Print all environment names in table (for debugging)
-          awk -F'|' '($0 ~ /ready/ && $0 !~ /Environment name/) {
-            n=$2;
-            gsub(/^[ \t]+|[ \t]+$/, "", n);
-            gsub(/ \[active\]/, "", n);
-            print n
-          }' env_table.txt | wc -l
-
-          # Find all environment names that look like master-vN (with or without [active])
+          # Find all environment names that look like master-vN (strip [active] and spaces)
           highest=0
           mapfile -t env_names < <(awk -F'|' '$0 ~ /ready/ && $0 !~ /Environment name/ {
             for (i=1; i<=NF; i++) {
               field=$i;
-              gsub(/^[ \t]+|[ \t]+$/, "", field);
+              gsub(/^[ \t]+|[ \t]+$/, "", field);    # trim whitespace
+              gsub(/ \[active\]/, "", field);        # strip [active]
               if (field ~ /^master-v[0-9]+$/) {
                 print field;
               }
@@ -124,7 +115,7 @@ jobs:
           
           echo "Found env names:"
           printf '%s\n' "${env_names[@]}"
-          
+
           for env_name in "${env_names[@]}"; do
             if [[ $env_name =~ master-v([0-9]+) ]]; then
               num=${BASH_REMATCH[1]}
