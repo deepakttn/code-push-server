@@ -123,7 +123,7 @@ jobs:
           name: contentful-roles-backup
           path: ./roles-backup.json
           retention-days: 7
-      
+               
       # Create changeset between source and target environments
       - name: Create changeset between environments
         run: |
