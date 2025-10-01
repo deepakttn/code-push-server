@@ -111,77 +111,77 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           SPACE_ID: ${{ env.SPACE_ID }}
       
-      - name: Lock master environment
-        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      # - name: Lock master environment
+      #   run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
-      - name: Upload roles backup artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: contentful-roles-backup
-          path: ./roles-backup.json
-          retention-days: 7
-               
-      # Create changeset between source and target environments
-      - name: Create changeset between environments
-        run: |
-          contentful-merge create \
-            --cda-token "$CONTENTFUL_CDA_TOKEN" \
-            --space "$CONTENTFUL_SPACE_ID" \
-            --source master-v4 \
-            --target "$TARGET_ENV" \
-            --output-file changeset.json
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
-          TARGET_ENV: ${{ env.TARGET_ENV }}
+      # - name: Upload roles backup artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: contentful-roles-backup
+      #     path: ./roles-backup.json
+      #     retention-days: 7
+
+      # # Create changeset between source and target environments
+      # - name: Create changeset between environments
+      #   run: |
+      #     contentful-merge create \
+      #       --cda-token "$CONTENTFUL_CDA_TOKEN" \
+      #       --space "$CONTENTFUL_SPACE_ID" \
+      #       --source master-v4 \
+      #       --target "$TARGET_ENV" \
+      #       --output-file changeset.json
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
+      #     TARGET_ENV: ${{ env.TARGET_ENV }}
       
-      # Check for merge conflicts in changeset
-      - name: Check for merge conflicts
-        id: conflict-check
-        run: |
-          if grep -q '"conflicts":\s*\[' changeset.json && grep -qv '"conflicts":\s*\[\s*\]' changeset.json; then
-            echo "conflicts_found=true" >> $GITHUB_OUTPUT
-            echo "Conflicts found:"
-            cat changeset.json | jq '.conflicts'
-          else
-            echo "conflicts_found=false" >> $GITHUB_OUTPUT
-          fi
+      # # Check for merge conflicts in changeset
+      # - name: Check for merge conflicts
+      #   id: conflict-check
+      #   run: |
+      #     if grep -q '"conflicts":\s*\[' changeset.json && grep -qv '"conflicts":\s*\[\s*\]' changeset.json; then
+      #       echo "conflicts_found=true" >> $GITHUB_OUTPUT
+      #       echo "Conflicts found:"
+      #       cat changeset.json | jq '.conflicts'
+      #     else
+      #       echo "conflicts_found=false" >> $GITHUB_OUTPUT
+      #     fi
       
       
-      # Apply changeset if no conflicts
-      - name: Apply changeset if no conflicts
-        if: steps.conflict-check.outputs.conflicts_found == 'false'
-        run: |
-          contentful-merge apply \
-            --cma-token "$CONTENTFUL_TOKEN" \
-            --space "$CONTENTFUL_SPACE_ID" \
-            --environment "$TARGET_ENV" \
-            --file changeset.json
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          TARGET_ENV: ${{ env.TARGET_ENV }}
+      # # Apply changeset if no conflicts
+      # - name: Apply changeset if no conflicts
+      #   if: steps.conflict-check.outputs.conflicts_found == 'false'
+      #   run: |
+      #     contentful-merge apply \
+      #       --cma-token "$CONTENTFUL_TOKEN" \
+      #       --space "$CONTENTFUL_SPACE_ID" \
+      #       --environment "$TARGET_ENV" \
+      #       --file changeset.json
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      #     TARGET_ENV: ${{ env.TARGET_ENV }}
       
-      # Fail pipeline if merge conflicts are present
-      - name: Fail if conflicts are present
-        if: steps.conflict-check.outputs.conflicts_found == 'true'
-        run: exit 1
+      # # Fail pipeline if merge conflicts are present
+      # - name: Fail if conflicts are present
+      #   if: steps.conflict-check.outputs.conflicts_found == 'true'
+      #   run: exit 1
       
-      - name: Update master alias
-        run: |
-          contentful space environment-alias update \
-            --space-id "$SPACE_ID" \
-            --alias-id "$MASTER_ALIAS" \
-            --target-environment-id "$TARGET_ENV" \
-            --management-token "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
-          TARGET_ENV: ${{ env.TARGET_ENV }}
+      # - name: Update master alias
+      #   run: |
+      #     contentful space environment-alias update \
+      #       --space-id "$SPACE_ID" \
+      #       --alias-id "$MASTER_ALIAS" \
+      #       --target-environment-id "$TARGET_ENV" \
+      #       --management-token "$CONTENTFUL_TOKEN"
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      #     MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
+      #     TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Download roles backup artifact
         if: always()

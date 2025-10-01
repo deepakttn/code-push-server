@@ -170,31 +170,31 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           NEW_ENV: ${{ env.NEW_ENV }}
       
-      # - name: Lock master environment
-      #   run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
-      #   env:
-      #     SPACE_ID: ${{ env.SPACE_ID }}
-      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      - name: Lock master environment
+        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
-      # - name: Upload roles backup artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: contentful-roles-backup
-      #     path: ./roles-backup.json
-      #     retention-days: 7
+      - name: Upload roles backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: ./roles-backup.json
+          retention-days: 7
       
-      # - name: Update master alias
-      #   run: |
-      #     contentful space environment-alias update \
-      #       --space-id "$SPACE_ID" \
-      #       --alias-id "$MASTER_ALIAS" \
-      #       --target-environment-id "$NEW_ENV" \
-      #       --management-token "$CONTENTFUL_TOKEN"
-      #   env:
-      #     SPACE_ID: ${{ env.SPACE_ID }}
-      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-      #     MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
-      #     NEW_ENV: ${{ env.NEW_ENV }}
+      - name: Update master alias
+        run: |
+          contentful space environment-alias update \
+            --space-id "$SPACE_ID" \
+            --alias-id "$MASTER_ALIAS" \
+            --target-environment-id "$NEW_ENV" \
+            --management-token "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
+          NEW_ENV: ${{ env.NEW_ENV }}
 
       # - name: Download roles backup artifact
       #   if: always()
