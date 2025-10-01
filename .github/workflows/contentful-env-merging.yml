@@ -1,0 +1,74 @@
+name: Contentful Environment Merge with Conflict Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_env:
+        description: Source environment (where edits exist)
+        required: true
+        default: 'staging'
+      target_env:
+        description: Target environment (where to merge)
+        required: true
+        default: 'production'
+
+env:
+  CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+  CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+  MASTER_ALIAS: master
+
+jobs:
+  contentful-merge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install contentful-merge CLI
+        run: npm install -g contentful-merge
+
+      - name: Create changeset between environments
+        run: |
+          contentful-merge create \
+            --cda-token "$CONTENTFUL_TOKEN" \
+            --space "$CONTENTFUL_SPACE_ID" \
+            --source ${{ github.event.inputs.source_env }} \
+            --target ${{ github.event.inputs.target_env }} \
+            --out changeset.json
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+
+      - name: Check for merge conflicts
+        id: conflict-check
+        run: |
+          if grep -q '"conflicts":\s*\[' changeset.json && grep -qv '"conflicts":\s*\[\s*\]' changeset.json; then
+            echo "conflicts_found=true" >> $GITHUB_OUTPUT
+            echo "Conflicts found:"
+            cat changeset.json | jq '.conflicts'
+          else
+            echo "conflicts_found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Apply changeset if no conflicts
+        if: steps.conflict-check.outputs.conflicts_found == 'false'
+        run: |
+          contentful-merge apply \
+            --cma-token "$CONTENTFUL_TOKEN" \
+            --space "$CONTENTFUL_SPACE_ID" \
+            --environment ${{ github.event.inputs.target_env }} \
+            --file changeset.json
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+
+      - name: Fail if conflicts are present
+        if: steps.conflict-check.outputs.conflicts_found == 'true'
+        run: exit 1
+        
