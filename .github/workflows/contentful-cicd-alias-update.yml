@@ -131,7 +131,7 @@ jobs:
             --space "$CONTENTFUL_SPACE_ID" \
             --source master \
             --target "$TARGET_ENV" \
-            --out changeset.json
+            --output-file changeset.json
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
