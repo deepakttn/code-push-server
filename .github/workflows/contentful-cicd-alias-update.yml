@@ -127,7 +127,7 @@ jobs:
       - name: Create changeset between environments
         run: |
           contentful-merge create \
-            --cda-token "$CONTENTFUL_TOKEN" \
+            --cma-token "$CONTENTFUL_TOKEN" \
             --space "$CONTENTFUL_SPACE_ID" \
             --source master-v4 \
             --target "$TARGET_ENV" \
