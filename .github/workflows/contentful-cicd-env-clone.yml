@@ -105,7 +105,7 @@ jobs:
             echo "Deleting oldest environments to maintain limit"
             jq -r "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] 
                      | sort_by(.createdAt) 
-                     | .[0:$max_env] 
+                     | .[0:${2}] 
                      | .[].id" envs_parsed.json | while read env_id; do
               echo "Deleting env $env_id"
               contentful space environment delete \
@@ -187,9 +187,9 @@ jobs:
         uses: peter-evans/workflow-dispatch@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: "contentful-cicd-alias-update-new.yml"
+          workflow: contentful-cicd-env-migration.yml
           ref: main
-          inputs:
+          inputs: |
             brand: ${{ github.event.inputs.brand }}
             clone_run_id: ${{ github.run_id }}
       

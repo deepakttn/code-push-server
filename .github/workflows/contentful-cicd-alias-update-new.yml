@@ -182,12 +182,10 @@ jobs:
       #     TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Download roles backup artifact
-        if: always()
         uses: actions/download-artifact@v4
         with:
           name: contentful-roles-backup
           path: ./roles-backup.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.inputs.clone_run_id }}
 
       - name: Unlock master environment
