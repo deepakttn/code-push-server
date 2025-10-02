@@ -111,18 +111,18 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           SPACE_ID: ${{ env.SPACE_ID }}
       
-      - name: Lock master environment
-        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      # - name: Lock master environment
+      #   run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
-      - name: Upload roles backup artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: contentful-roles-backup
-          path: ./roles-backup.json
-          retention-days: 7
+      # - name: Upload roles backup artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: contentful-roles-backup
+      #     path: ./roles-backup.json
+      #     retention-days: 7
       
       - name: Ensure source environment exists
         run: |
@@ -143,7 +143,7 @@ jobs:
           contentful-merge create \
             --cda-token "$CONTENTFUL_CDA_TOKEN" \
             --space "$CONTENTFUL_SPACE_ID" \
-            --source master-2025-09-09 \
+            --source "$TARGET_ENV" \
             --target master-v4 \
             --output-file changeset.json
         env:
@@ -182,6 +182,19 @@ jobs:
       - name: Fail if conflicts are present
         if: steps.conflict-check.outputs.conflicts_found == 'true'
         run: exit 1
+      
+      - name: Lock master environment
+        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+
+      - name: Upload roles backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: ./roles-backup.json
+          retention-days: 7
       
       - name: Update master alias
         run: |
