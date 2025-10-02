@@ -14,7 +14,7 @@ on:
           - Gym Website
           - Jetts New Zealand
           - Zap Fitness
-      source-env:
+      target-env:
         description: 'Target environment'
         required: true
         default: 'master-v4'
@@ -147,8 +147,8 @@ jobs:
           contentful-merge create \
             --cda-token "$CONTENTFUL_CDA_TOKEN" \
             --space "$SPACE_ID" \
-            --source "${{ github.event.inputs['source-env'] }}" \
-            --target "$TARGET_ENV" \
+            --source "$TARGET_ENV" \
+            --target "${{ github.event.inputs['target-env'] }}" \
             --output-file changeset.json
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
