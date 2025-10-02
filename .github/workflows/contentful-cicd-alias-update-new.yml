@@ -141,14 +141,14 @@ jobs:
       - name: Create changeset between environments
         run: |
           contentful-merge create \
-            --cda-token "$CONTENTFUL_TOKEN" \
+            --cda-token "$CONTENTFUL_CDA_TOKEN" \
             --space "$SPACE_ID" \
             --source "$TARGET_ENV" \
             --target master-v4 \
             --output-file changeset.json
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
           TARGET_ENV: ${{ env.TARGET_ENV }}
       
       # Check for merge conflicts in changeset
@@ -170,7 +170,7 @@ jobs:
         run: |
           contentful-merge apply \
             --cma-token "$CONTENTFUL_TOKEN" \
-            --space "$CONTENTFUL_SPACE_ID" \
+            --space "$SPACE_ID" \
             --environment "$TARGET_ENV" \
             --file changeset.json
         env:
