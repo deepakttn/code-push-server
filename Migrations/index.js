@@ -18,8 +18,4 @@ module.exports = function (migration) {
     .type('Array')
     .items({ type: 'Symbol' });
 
-  blogPost.createField('featuredImage')
-    .name('Featured Image')
-    .type('Link')
-    .linkType('Asset');
 };
