@@ -183,6 +183,16 @@ jobs:
           path: ./roles-backup.json
           retention-days: 7
       
+      - name: Trigger Migration workflow
+        uses: peter-evans/workflow-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: "contentful-cicd-alias-update-new.yml"
+          ref: main
+          inputs:
+            brand: ${{ github.event.inputs.brand }}
+            clone_run_id: ${{ github.run_id }}
+      
       # - name: Update master alias
       #   run: |
       #     contentful space environment-alias update \
