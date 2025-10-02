@@ -14,6 +14,10 @@ on:
           - Gym Website
           - Jetts New Zealand
           - Zap Fitness
+      target-env:
+        description: 'Target environment'
+        required: true
+        default: 'master-v4'
 
 env:
   CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
@@ -111,18 +115,77 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           SPACE_ID: ${{ env.SPACE_ID }}
       
-      # - name: Lock master environment
-      #   run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+      - name: Lock master environment
+        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+
+      - name: Upload roles backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: ./roles-backup.json
+          retention-days: 7
+      
+      # - name: Ensure source environment exists
+      #   run: |
+      #     if ! contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" | grep -q "$TARGET_ENV"; then
+      #       echo "Environment $TARGET_ENV does not exist." 
+      #     else
+      #       echo "Environment $TARGET_ENV exists."
+      #     fi
       #   env:
       #     SPACE_ID: ${{ env.SPACE_ID }}
       #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      #     TARGET_ENV: ${{ env.TARGET_ENV }}
 
-      # - name: Upload roles backup artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: contentful-roles-backup
-      #     path: ./roles-backup.json
-      #     retention-days: 7
+
+      # # Create changeset between source and target environments
+      # - name: Create changeset between environments
+      #   run: |
+      #     contentful-merge create \
+      #       --cda-token "$CONTENTFUL_CDA_TOKEN" \
+      #       --space "$SPACE_ID" \
+      #       --source "$TARGET_ENV" \
+      #       --target master-v4 \
+      #       --output-file changeset.json
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
+      #     TARGET_ENV: ${{ env.TARGET_ENV }}
+      
+      # # Check for merge conflicts in changeset
+      # - name: Check for merge conflicts
+      #   id: conflict-check
+      #   run: |
+      #     if grep -q '"conflicts":\s*\[' changeset.json && grep -qv '"conflicts":\s*\[\s*\]' changeset.json; then
+      #       echo "conflicts_found=true" >> $GITHUB_OUTPUT
+      #       echo "Conflicts found:"
+      #       cat changeset.json | jq '.conflicts'
+      #     else
+      #       echo "conflicts_found=false" >> $GITHUB_OUTPUT
+      #     fi
+      
+      
+      # # Apply changeset if no conflicts
+      # - name: Apply changeset if no conflicts
+      #   if: steps.conflict-check.outputs.conflicts_found == 'false'
+      #   run: |
+      #     contentful-merge apply \
+      #       --cma-token "$CONTENTFUL_TOKEN" \
+      #       --space "$SPACE_ID" \
+      #       --environment "$TARGET_ENV" \
+      #       --file changeset.json
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      #     TARGET_ENV: ${{ env.TARGET_ENV }}
+      
+      # # Fail pipeline if merge conflicts are present
+      # - name: Fail if conflicts are present
+      #   if: steps.conflict-check.outputs.conflicts_found == 'true'
+      #   run: exit 1
       
       - name: Ensure source environment exists
         run: |
@@ -144,7 +207,7 @@ jobs:
             --cda-token "$CONTENTFUL_CDA_TOKEN" \
             --space "$SPACE_ID" \
             --source "$TARGET_ENV" \
-            --target master-v4 \
+            --target "${{ github.event.inputs['target-env'] }}" \
             --output-file changeset.json
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
@@ -182,19 +245,6 @@ jobs:
       - name: Fail if conflicts are present
         if: steps.conflict-check.outputs.conflicts_found == 'true'
         run: exit 1
-      
-      - name: Lock master environment
-        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-
-      - name: Upload roles backup artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: contentful-roles-backup
-          path: ./roles-backup.json
-          retention-days: 7
       
       - name: Update master alias
         run: |
