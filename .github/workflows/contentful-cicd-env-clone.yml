@@ -170,28 +170,18 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           NEW_ENV: ${{ env.NEW_ENV }}
       
-      - name: Lock master environment
-        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      # - name: Lock master environment
+      #   run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
-      - name: Upload roles backup artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: contentful-roles-backup
-          path: ./roles-backup.json
-          retention-days: 7
-      
-      - name: Trigger Migration workflow
-        uses: peter-evans/workflow-dispatch@v2.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: contentful-cicd-env-migration.yml
-          ref: main
-          inputs: |
-            brand: ${{ github.event.inputs.brand }}
-            clone_run_id: ${{ github.run_id }}
+      # - name: Upload roles backup artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: contentful-roles-backup
+      #     path: ./roles-backup.json
+      #     retention-days: 7
       
       # - name: Update master alias
       #   run: |
