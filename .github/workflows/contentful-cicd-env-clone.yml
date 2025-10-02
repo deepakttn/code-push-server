@@ -105,7 +105,7 @@ jobs:
             echo "Deleting oldest environments to maintain limit"
             jq -r "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] 
                      | sort_by(.createdAt) 
-                     | .[0:${2}] 
+                     | .[0:$max_env] 
                      | .[].id" envs_parsed.json | while read env_id; do
               echo "Deleting env $env_id"
               contentful space environment delete \
