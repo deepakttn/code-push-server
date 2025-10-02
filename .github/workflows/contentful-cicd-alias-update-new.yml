@@ -172,7 +172,7 @@ jobs:
       - name: Apply changeset if no conflicts
         if: steps.conflict-check.outputs.conflicts_found == 'false'
         run: |
-          contentful-merge apply \
+          echo "Y" | contentful-merge apply \
             --cma-token "$CONTENTFUL_TOKEN" \
             --space "$SPACE_ID" \
             --environment "$TARGET_ENV" \
