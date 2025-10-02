@@ -123,6 +123,19 @@ jobs:
           name: contentful-roles-backup
           path: ./roles-backup.json
           retention-days: 7
+      
+      - name: Ensure source environment exists
+        run: |
+          if ! contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_MANAGEMENT_TOKEN" | grep -q "$TARGET_ENV"; then
+            echo "Environment $TARGET_ENV does not exist. 
+          else
+            echo "Environment $TARGET_ENV exists."
+          fi
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
+          TARGET_ENV: ${{ env.TARGET_ENV }}
+
 
       # Create changeset between source and target environments
       - name: Create changeset between environments
