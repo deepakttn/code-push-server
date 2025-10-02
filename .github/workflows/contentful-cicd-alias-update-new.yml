@@ -142,7 +142,7 @@ jobs:
         run: |
           contentful-merge create \
             --cda-token "$CONTENTFUL_CDA_TOKEN" \
-            --space "$CONTENTFUL_SPACE_ID" \
+            --space "$SPACE_ID" \
             --source "$TARGET_ENV" \
             --target master-v4 \
             --output-file changeset.json
