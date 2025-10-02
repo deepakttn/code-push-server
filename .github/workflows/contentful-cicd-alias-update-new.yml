@@ -126,14 +126,14 @@ jobs:
       
       - name: Ensure source environment exists
         run: |
-          if ! contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_CDA_TOKEN" | grep -q "$TARGET_ENV"; then
+          if ! contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" | grep -q "$TARGET_ENV"; then
             echo "Environment $TARGET_ENV does not exist." 
           else
             echo "Environment $TARGET_ENV exists."
           fi
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_MANAGEMENT_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           TARGET_ENV: ${{ env.TARGET_ENV }}
 
 
@@ -141,14 +141,14 @@ jobs:
       - name: Create changeset between environments
         run: |
           contentful-merge create \
-            --cda-token "$CONTENTFUL_CDA_TOKEN" \
+            --cda-token "$CONTENTFUL_TOKEN" \
             --space "$SPACE_ID" \
             --source "$TARGET_ENV" \
             --target master-v4 \
             --output-file changeset.json
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           TARGET_ENV: ${{ env.TARGET_ENV }}
       
       # Check for merge conflicts in changeset
