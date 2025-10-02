@@ -177,6 +177,7 @@ jobs:
             --space "$SPACE_ID" \
             --environment "$TARGET_ENV" \
             --file changeset.json
+            --yes
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
