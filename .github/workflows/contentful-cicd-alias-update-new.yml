@@ -126,8 +126,8 @@ jobs:
       
       - name: Ensure source environment exists
         run: |
-          if ! contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_MANAGEMENT_TOKEN" | grep -q "$TARGET_ENV"; then
-            echo "Environment $TARGET_ENV does not exist. 
+          if ! contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_CDA_TOKEN" | grep -q "$TARGET_ENV"; then
+            echo "Environment $TARGET_ENV does not exist." 
           else
             echo "Environment $TARGET_ENV exists."
           fi
