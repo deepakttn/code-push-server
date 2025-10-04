@@ -54,7 +54,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install Contentful CLI
-        run: npm install -g contentful-cli contentful-migration contentful-merge jq
+        run: npm install -g contentful-cli contentful-migration contentful-merge
 
       - name: Set SPACE_ID based on brand input
         id: set_space
