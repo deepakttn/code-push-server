@@ -211,7 +211,7 @@ jobs:
         if: ${{ github.event.inputs.option == 'alias-update' }}
         uses: dawidd6/action-download-artifact@v3
         with:
-          workflow: contentful-deployment.yml
+          workflow: contentful.yml
           name: contentful-roles-backup
           path: .
 
