@@ -144,15 +144,12 @@ jobs:
       # Create changeset between source and target environments
       - name: Create changeset between environments
         run: |
-          if ! contentful-merge create \
+          contentful-merge create \
             --cda-token "$CONTENTFUL_CDA_TOKEN" \
             --space "$SPACE_ID" \
             --source "${{ github.event.inputs['source-env'] }}" \
             --target "$TARGET_ENV" \
-            --output-file changeset.json; then
-            echo "conflicts_found=true" >> $GITHUB_OUTPUT
-            echo "Content model divergence or other error detected during changeset creation."
-            exit 1
+            --output-file changeset.json
           fi
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
