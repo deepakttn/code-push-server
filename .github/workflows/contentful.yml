@@ -166,6 +166,21 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           NEW_ENV: ${{ env.NEW_ENV }}
+      
+      - name: Wait for new environment to be ready
+        if: ${{ github.event.inputs.option == 'env-clone' }}
+        run: |
+          echo "Waiting for environment $NEW_ENV to become ready..."
+          for i in {1..30}; do
+            status=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+              "https://api.contentful.com/spaces/$SPACE_ID/environments/$NEW_ENV" | jq -r '.sys.status.sys.id')
+            if [[ "$status" == "ready" ]]; then
+              echo "✅ Environment $NEW_ENV is ready."
+              break
+            fi
+            echo "Still creating ($status)... waiting 10s..."
+            sleep 10
+          done
 
       - name: Run migration scripts
         if: ${{ github.event.inputs.option == 'env-clone' }}
