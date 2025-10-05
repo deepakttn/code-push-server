@@ -1,21 +1,18 @@
-module.exports = function (migration) {
-  const blogPost = migration.editContentType('blogPost');
+const blogPost = migration.editContentType('blogPost');
 
-  blogPost.createField('summaryKeyName')
-    .name('Summary')
-    .type('Text');
+blogPost.editField('summaryKeyName')
+  .name('Summary')
+  .type('Text');
 
-  blogPost.createField('author')
-    .name('Author')
-    .type('Symbol');
+blogPost.editField('author')
+  .name('Author')
+  .type('Symbol');
 
-  blogPost.createField('publishDate')
-    .name('Publish Date')
-    .type('Date');
+blogPost.editField('publishDate')
+  .name('Publish Date')
+  .type('Date');
 
-  blogPost.createField('tags')
-    .name('Tags')
-    .type('Array')
-    .items({ type: 'Symbol' });
-
-};
+blogPost.editField('tags')
+  .name('Tags')
+  .type('Array')
+  .items({ type: 'Symbol' });
