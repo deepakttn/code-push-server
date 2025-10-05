@@ -28,7 +28,7 @@ on:
       max_env_count:
         description: 'Max allowed environments (used for clone)'
         required: false
-        default: 4
+        default: 3
       source-env:
         description: 'Source environment (used for alias-update)'
         required: false
@@ -116,17 +116,21 @@ jobs:
 
           if (( env_count > max_env )); then
             echo "Deleting oldest environments to maintain limit"
-            jq -r "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] 
-                     | sort_by(.createdAt) 
-                     | .[0:${2}] 
-                     | .[].id" envs_parsed.json | while read env_id; do
-              echo "Deleting env $env_id"
+            oldest_env_id=$(jq -r "[ .[] 
+              | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] 
+              | sort_by(.createdAt) 
+              | .[0].id" envs_parsed.json)
+
+            if [ -n "$oldest_env_id" ] && [ "$oldest_env_id" != "null" ]; then
+              echo "Deleting environment: $oldest_env_id"
               contentful space environment delete \
                 --space-id "$SPACE_ID" \
                 --environment-id "$env_id" \
                 --management-token "$CONTENTFUL_TOKEN" \
                 --yes
-            done
+            else
+              echo "No valid oldest environment found to delete"
+            fi
           else
             echo "No deletion needed"
           fi
