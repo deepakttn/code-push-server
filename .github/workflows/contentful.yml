@@ -125,7 +125,7 @@ jobs:
               echo "Deleting environment: $oldest_env_id"
               contentful space environment delete \
                 --space-id "$SPACE_ID" \
-                --environment-id "$env_id" \
+                --environment-id "$oldest_env_id" \
                 --management-token "$CONTENTFUL_TOKEN" \
                 --yes
             else
