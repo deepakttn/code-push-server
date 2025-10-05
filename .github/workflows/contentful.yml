@@ -127,7 +127,6 @@ jobs:
                 --space-id "$SPACE_ID" \
                 --environment-id "$oldest_env_id" \
                 --management-token "$CONTENTFUL_TOKEN" \
-                --yes
             else
               echo "No valid oldest environment found to delete"
             fi
