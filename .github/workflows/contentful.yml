@@ -28,7 +28,7 @@ on:
       max_env_count:
         description: 'Max allowed environments (used for clone)'
         required: false
-        default: 3
+        default: 2
       source-env:
         description: 'Source environment (used for alias-update)'
         required: false
