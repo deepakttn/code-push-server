@@ -199,9 +199,11 @@ jobs:
 
           curl -s -X PUT \
             -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
-            -H "Content-Type: application/json" \
+            -H "Content-Type: application/vnd.contentful.management.v1+json" \
             -d "{\"environments\": [$(echo "$UPDATED_ENVS" | jq -r '.[] | "{\"sys\": {\"type\": \"Link\", \"linkType\": \"Environment\", \"id\": \"" + . + "\"}}, "' | sed 's/, $//') ]}" \
             "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID"
+          
+          echo "CDA key updated successfully with new environment: $NEW_ENV"
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           NEW_ENV: ${{ env.NEW_ENV }}
