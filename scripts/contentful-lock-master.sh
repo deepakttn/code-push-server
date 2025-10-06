@@ -28,11 +28,11 @@ cat "$BACKUP_FILE" | jq -c '.items[]' | while read role; do
   role_id=$(echo "$role" | jq -r '.sys.id')
   role_name=$(echo "$role" | jq -r '.name')
 
-  # Skip Admin
-  if [[ "$role_name" == "Admin" ]]; then
-    echo "Skipping Admin role ($role_id)"
-    continue
-  fi
+  # # Skip Admin
+  # if [[ "$role_name" == "Admin" ]]; then
+  #   echo "Skipping Admin role ($role_id)"
+  #   continue
+  # fi
 
   echo "Processing role: $role_name ($role_id)"
 

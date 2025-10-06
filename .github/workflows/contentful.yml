@@ -330,7 +330,7 @@ jobs:
           TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Unlock master environment
-        if: always()
+        if: ${{ github.event.inputs.option == 'alias-update' }}
         run: bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
