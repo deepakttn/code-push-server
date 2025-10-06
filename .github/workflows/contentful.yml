@@ -177,30 +177,30 @@ jobs:
           CDA_KEY_ID=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             "https://api.contentful.com/spaces/$SPACE_ID/api_keys" \
             | jq -r '.items[] | select(.accessToken=="'${{ secrets.CONTENTFUL_CDA_TOKEN }}'") | .sys.id')
-      
+
           if [ -z "$CDA_KEY_ID" ] || [ "$CDA_KEY_ID" == "null" ]; then
-            echo "❌ Could not find CDA Key ID for token"
+            echo "Could not find CDA Key ID for token"
             exit 1
           fi
-      
-          echo "✅ Found CDA key ID: $CDA_KEY_ID"
-      
+
+          echo "Found CDA key ID: $CDA_KEY_ID"
+
           echo "Fetching existing environments for CDA key..."
           CDA_KEY_DETAILS=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID")
-      
+
           ENV_LIST=$(echo "$CDA_KEY_DETAILS" | jq '[.environments[].sys.id]')
           VERSION=$(echo "$CDA_KEY_DETAILS" | jq -r '.sys.version')
-      
+
           echo "Existing environments: $ENV_LIST"
           echo "Current CDA key version: $VERSION"
-      
+
           UPDATED_ENVS=$(echo "$ENV_LIST" | jq --arg new "$NEW_ENV" \
             '( . // [] ) | if index($new) then . else . + [$new] end')
-      
+
           PAYLOAD=$(echo "$UPDATED_ENVS" | jq -c '{environments: [.[] | {sys: {type: "Link", linkType: "Environment", id: .}}]}')
-      
-          echo "📤 Sending update request to Contentful..."
+
+          echo "Sending update request to Contentful..."
           RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
             -X PUT \
             -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
@@ -208,16 +208,16 @@ jobs:
             -H "Content-Type: application/vnd.contentful.management.v1+json" \
             -d "$PAYLOAD" \
             "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID")
-      
+
           echo "HTTP Status: $RESPONSE"
           cat response.json | jq '.' || true
-      
+
           if [[ "$RESPONSE" -ne 200 ]]; then
-            echo "❌ Failed to update CDA key environments. See above response."
+            echo "Failed to update CDA key environments. See above response."
             exit 1
           fi
-      
-          echo "✅ CDA key updated successfully with new environment: $NEW_ENV"
+
+          echo "CDA key updated successfully with new environment: $NEW_ENV"
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           NEW_ENV: ${{ env.NEW_ENV }}
