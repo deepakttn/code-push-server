@@ -193,17 +193,27 @@ jobs:
           echo "Existing environments: $ENV_LIST"
 
           UPDATED_ENVS=$(echo "$ENV_LIST" | jq --arg new "$NEW_ENV" \
-            'if index($new) then . else . + [$new] end')
-
-          echo "Updating CDA key with environments: $UPDATED_ENVS"
-
-          curl -s -X PUT \
+            '( . // [] ) | if index($new) then . else . + [$new] end')
+          
+          PAYLOAD=$(echo "$UPDATED_ENVS" | jq -c '{environments: [.[] | {sys: {type: "Link", linkType: "Environment", id: .}}]}')
+          echo "Sending update request to Contentful..."
+          RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
+            -X PUT \
             -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             -H "Content-Type: application/vnd.contentful.management.v1+json" \
-            -d "{\"environments\": [$(echo "$UPDATED_ENVS" | jq -r '.[] | "{\"sys\": {\"type\": \"Link\", \"linkType\": \"Environment\", \"id\": \"" + . + "\"}}, "' | sed 's/, $//') ]}" \
-            "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID"
+            -d "$PAYLOAD" \
+            "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID")
           
+          echo "HTTP Status: $RESPONSE"
+          cat response.json | jq '.' || true
+
+          if [[ "$RESPONSE" -ne 200 ]]; then
+            echo "Failed to update CDA key environments. See above response."
+            exit 1
+          fi
+
           echo "CDA key updated successfully with new environment: $NEW_ENV"
+
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           NEW_ENV: ${{ env.NEW_ENV }}
