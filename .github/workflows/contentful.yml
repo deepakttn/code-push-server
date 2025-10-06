@@ -170,6 +170,44 @@ jobs:
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           NEW_ENV: ${{ env.NEW_ENV }}
       
+      - name: Add new env to existing CDA key
+        if: ${{ github.event.inputs.option == 'env-clone' }}
+        run: |
+          echo "Fetching CDA Key ID..."
+          CDA_KEY_ID=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            "https://api.contentful.com/spaces/$SPACE_ID/api_keys" \
+            | jq -r '.items[] | select(.accessToken=="'${{ secrets.CONTENTFUL_CDA_TOKEN }}'") | .sys.id')
+
+          if [ -z "$CDA_KEY_ID" ] || [ "$CDA_KEY_ID" == "null" ]; then
+            echo "Could not find CDA Key ID for token"
+            exit 1
+          fi
+
+          echo "Found CDA key ID: $CDA_KEY_ID"
+
+          echo "Fetching existing environments for CDA key..."
+          ENV_LIST=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID" \
+            | jq '[.environments[].sys.id]')
+
+          echo "Existing environments: $ENV_LIST"
+
+          UPDATED_ENVS=$(echo "$ENV_LIST" | jq --arg new "$NEW_ENV" \
+            'if index($new) then . else . + [$new] end')
+
+          echo "Updating CDA key with environments: $UPDATED_ENVS"
+
+          curl -s -X PUT \
+            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"environments\": [$(echo "$UPDATED_ENVS" | jq -r '.[] | "{\"sys\": {\"type\": \"Link\", \"linkType\": \"Environment\", \"id\": \"" + . + "\"}}, "' | sed 's/, $//') ]}" \
+            "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          NEW_ENV: ${{ env.NEW_ENV }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
+      
       - name: Wait for new environment to be ready
         if: ${{ github.event.inputs.option == 'env-clone' }}
         run: |
