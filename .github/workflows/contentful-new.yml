@@ -87,17 +87,25 @@ jobs:
       ##########################################################
       # OPTION 1: env-clone
       ##########################################################
-      - name: Check eligibility and manage environments
+      - name: Manage and clone environments
         if: ${{ github.event.inputs.option == 'env-clone' }}
         id: manage_envs
         run: |
-          echo "🔍 Checking eligibility for creating a new environment in space: $SPACE_ID"
-
+          echo "📡 Fetching environments for space $SPACE_ID ..."
           base="${{ github.event.inputs.base_env_name }}"
           master_alias="${{ env.MASTER_ALIAS }}"
           max_env=${{ github.event.inputs.max_env_count }}
 
-          # Fetch environment list
+          # 1️⃣ Get current master alias target environment (e.g. master-v7)
+          echo "🔍 Resolving environment behind alias '$master_alias'..."
+          alias_info=$(curl -s \
+            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            "https://api.contentful.com/spaces/$SPACE_ID/environment_aliases/$master_alias")
+
+          current_master_env=$(echo "$alias_info" | jq -r '.environment.sys.id // "unknown"')
+          echo "🟢 Current master alias points to environment: $current_master_env"
+
+          # 2️⃣ Fetch all environments in the space
           curl -s \
             -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             "https://api.contentful.com/spaces/$SPACE_ID/environments" \
@@ -108,61 +116,50 @@ jobs:
           echo "📜 Available environments:"
           jq -r '.[] | "\(.name) | \(.id) | \(.createdAt)"' envs_parsed.json
 
-          # Get current master alias target
-          current_master_env=$(curl -s \
-            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
-            "https://api.contentful.com/spaces/$SPACE_ID/environments/master" \
-            | jq -r '.sys.id // "master"')
-
-          echo "🟢 Current master alias points to: $current_master_env"
-
-          # Extract numeric version from master alias (if any)
+          # 3️⃣ Determine current and next version numbers
           current_version=$(echo "$current_master_env" | grep -oE '[0-9]+$' || echo "0")
           next_version=$((current_version + 1))
           next_env_name="${base}-v${next_version}"
 
           echo "🧮 Next eligible environment name: $next_env_name"
 
-          # Check if next version already exists
-          existing=$(jq -r --arg name "$next_env_name" '[ .[] | select(.name == $name) ] | length' envs_parsed.json)
-          if [[ "$existing" != "0" ]]; then
-            echo "❌ Environment $next_env_name already exists. New version creation not allowed."
+          # 4️⃣ Check if the next version already exists
+          exists=$(jq -r --arg next "$next_env_name" '[ .[] | select(.name == $next) ] | length' envs_parsed.json)
+          if (( exists > 0 )); then
+            echo "❌ Environment '$next_env_name' already exists. Aborting new environment creation."
             exit 1
           fi
 
-          echo "✅ No higher version exists. Eligible for creation."
+          echo "✅ No higher version exists. Proceeding with environment creation."
 
-          # Count existing versioned environments
+          # 5️⃣ Enforce environment count limit (delete oldest if needed)
           env_count=$(jq "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] | length" envs_parsed.json)
-          echo "📊 Found $env_count versioned environments (limit: $max_env)"
+          echo "📊 Found $env_count existing versioned environments."
 
-          # Delete oldest if limit exceeded
           if (( env_count >= max_env )); then
-            echo "⚠️ Environment limit reached ($env_count/$max_env). Deleting oldest to make space..."
-
+            echo "⚠️ Environment count ($env_count) reached max limit ($max_env). Deleting oldest one..."
             oldest_env_id=$(jq -r "[ .[] 
               | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] 
               | sort_by(.createdAt) 
               | .[0].id" envs_parsed.json)
 
-            if [ -n "$oldest_env_id" ] && [ "$oldest_env_id" != "null" ]; then
+            if [[ -n "$oldest_env_id" && "$oldest_env_id" != "null" ]]; then
               echo "🗑️ Deleting oldest environment: $oldest_env_id"
               contentful space environment delete \
                 --space-id "$SPACE_ID" \
                 --environment-id "$oldest_env_id" \
                 --management-token "$CONTENTFUL_TOKEN"
             else
-              echo "⚠️ No valid oldest environment found to delete"
+              echo "⚠️ No valid environment found for deletion."
             fi
           else
-            echo "✅ Environment count within limit ($env_count/$max_env)"
+            echo "✅ Environment count within limit ($env_count/$max_env)."
           fi
-
-          echo "NEW_ENV=$next_env_name" >> $GITHUB_ENV
         env:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           SPACE_ID: ${{ env.SPACE_ID }}
+
 
       - name: Clone environment
         if: ${{ github.event.inputs.option == 'env-clone' }}
