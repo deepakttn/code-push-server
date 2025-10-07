@@ -34,9 +34,11 @@ env:
   NODE_VERSION: 20
 
 jobs:
-  contentful-deploy:
+  prepare-env:
     runs-on: ubuntu-latest
-
+    outputs:
+      CURRENT_MASTER_ENV: ${{ steps.set_env.outputs.current_master_env }}
+      NEW_ENV: ${{ steps.set_env.outputs.new_env }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -77,85 +79,37 @@ jobs:
               ;;
           esac
 
-      ##########################################################
-      # 1️⃣ Create & clone new environment
-      ##########################################################
-      - name: Manage and clone environments
-        id: manage_envs
+      - name: Manage & clone environments
+        id: set_env
         run: |
-          echo "📡 Fetching environments for space $SPACE_ID ..."
           base="${{ github.event.inputs.base_env_name }}"
           master_alias="${{ env.MASTER_ALIAS }}"
           max_env=${{ github.event.inputs.max_env_count }}
 
           # Get current master alias target environment
-          alias_info=$(curl -s \
-            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+          alias_info=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             "https://api.contentful.com/spaces/$SPACE_ID/environment_aliases/$master_alias")
           current_master_env=$(echo "$alias_info" | jq -r '.environment.sys.id // "unknown"')
           echo "🟢 Current master alias points to environment: $current_master_env"
-          echo "CURRENT_MASTER_ENV=$current_master_env" >> $GITHUB_ENV
+          echo "current_master_env=$current_master_env" >> $GITHUB_OUTPUT
 
           # Determine next version
           current_version=$(echo "$current_master_env" | grep -oE '[0-9]+$' || echo "0")
           next_version=$((current_version + 1))
           next_env_name="${base}-v${next_version}"
           echo "🧮 Next eligible environment name: $next_env_name"
-          echo "NEW_ENV=$next_env_name" >> $GITHUB_ENV
+          echo "new_env=$next_env_name" >> $GITHUB_OUTPUT
 
-          # Fetch all environments
-          curl -s \
-            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
-            "https://api.contentful.com/spaces/$SPACE_ID/environments" \
-            > envs_raw.json
-          jq '[ .items[] | { name: .name, id: .sys.id, createdAt: .sys.createdAt } ]' envs_raw.json > envs_parsed.json
-
-          # Check if next version exists
-          exists=$(jq -r --arg next "$next_env_name" '[ .[] | select(.name == $next) ] | length' envs_parsed.json)
-          if (( exists > 0 )); then
-            echo "❌ Environment '$next_env_name' already exists. Aborting creation."
-            exit 1
-          fi
-
-          # Delete oldest if exceeding max
-          env_count=$(jq "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] | length" envs_parsed.json)
-          if (( env_count >= max_env )); then
-            oldest_env_id=$(jq -r "[ .[] 
-              | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] 
-              | sort_by(.createdAt) 
-              | .[0].id" envs_parsed.json)
-            if [[ -n "$oldest_env_id" && "$oldest_env_id" != "null" ]]; then
-              contentful space environment delete \
-                --space-id "$SPACE_ID" \
-                --environment-id "$oldest_env_id" \
-                --management-token "$CONTENTFUL_TOKEN"
-            fi
-          fi
-        env:
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
-          SPACE_ID: ${{ env.SPACE_ID }}
-
-      - name: Clone environment
-        run: |
-          echo "Cloning environment $CURRENT_MASTER_ENV -> $NEW_ENV ..."
+          # Clone environment
           contentful space environment create \
             --space-id "$SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
-            --environment-id "$NEW_ENV" \
-            --name "$NEW_ENV" \
-            --source-environment "$CURRENT_MASTER_ENV"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          CURRENT_MASTER_ENV: ${{ env.CURRENT_MASTER_ENV }}
-          NEW_ENV: ${{ env.NEW_ENV }}
+            --environment-id "$next_env_name" \
+            --name "$next_env_name" \
+            --source-environment "$current_master_env"
 
       - name: Lock master environment
         run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
       - name: Add new env to CDA key
         run: |
@@ -163,17 +117,11 @@ jobs:
             "https://api.contentful.com/spaces/$SPACE_ID/api_keys" \
             | jq -r '.items[] | select(.accessToken=="'${{ secrets.CONTENTFUL_CDA_TOKEN }}'") | .sys.id')
 
-          if [ -z "$CDA_KEY_ID" ] || [ "$CDA_KEY_ID" == "null" ]; then
-            echo "Could not find CDA Key ID"
-            exit 1
-          fi
-
           CDA_KEY_DETAILS=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID")
 
           ENV_LIST=$(echo "$CDA_KEY_DETAILS" | jq '[.environments[].sys.id]')
           VERSION=$(echo "$CDA_KEY_DETAILS" | jq -r '.sys.version')
-
           UPDATED_ENVS=$(echo "$ENV_LIST" | jq --arg new "$NEW_ENV" '( . // [] ) | if index($new) then . else . + [$new] end')
           PAYLOAD=$(echo "$UPDATED_ENVS" | jq -c '{environments: [.[] | {sys: {type: "Link", linkType: "Environment", id: .}}]}')
 
@@ -185,21 +133,13 @@ jobs:
             -d "$PAYLOAD" \
             "https://api.contentful.com/spaces/$SPACE_ID/api_keys/$CDA_KEY_ID")
 
-          echo "HTTP Status: $RESPONSE"
-          cat response.json | jq '.' || true
           if [[ "$RESPONSE" -ne 200 ]]; then
             echo "Failed to update CDA key environments."
             exit 1
           fi
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          NEW_ENV: ${{ env.NEW_ENV }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
 
       - name: Wait for new environment to be ready
         run: |
-          echo "Waiting for environment $NEW_ENV to become ready..."
           for i in {1..30}; do
             status=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
               "https://api.contentful.com/spaces/$SPACE_ID/environments/$NEW_ENV" | jq -r '.sys.status.sys.id')
@@ -207,13 +147,8 @@ jobs:
               echo "Environment $NEW_ENV is ready."
               break
             fi
-            echo "Still creating ($status)... waiting 10s..."
             sleep 10
           done
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          NEW_ENV: ${{ env.NEW_ENV }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
       - name: Run migration scripts
         run: |
@@ -223,10 +158,6 @@ jobs:
             --environment-id "$NEW_ENV" \
             --yes \
             Migrations/index.js
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          NEW_ENV: ${{ env.NEW_ENV }}
 
       - name: Upload roles backup artifact
         uses: actions/upload-artifact@v4
@@ -235,16 +166,22 @@ jobs:
           path: ./roles-backup.json
           retention-days: 7
 
-      ##########################################################
-      # 2️⃣ Approval Step
-      ##########################################################
-      - name: Wait for approval before applying changes
-        environment: prod   # <-- Requires manual approval in GitHub UI
-        run: echo "Awaiting approval to apply changes"
+  apply-changes:
+    runs-on: ubuntu-latest
+    needs: prepare-env
+    environment: prod   # <-- GitHub will pause for approval here
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      ##########################################################
-      # 3️⃣ Apply changes after approval
-      ##########################################################
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Contentful CLI
+        run: npm install -g contentful-cli contentful-migration contentful-merge
+
       - name: Download roles backup artifact
         uses: actions/download-artifact@v4
         with:
@@ -266,10 +203,6 @@ jobs:
           fi
 
           echo "TARGET_ENV=$target_env" >> $GITHUB_ENV
-          echo "Resolved TARGET_ENV=$target_env"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
 
       - name: Create changeset and check conflicts
         id: conflict-check
@@ -277,23 +210,16 @@ jobs:
           contentful-merge create \
             --cda-token "$CONTENTFUL_CDA_TOKEN" \
             --space "$SPACE_ID" \
-            --source "$CURRENT_MASTER_ENV" \
+            --source "${{ needs.prepare-env.outputs.CURRENT_MASTER_ENV }}" \
             --target "$TARGET_ENV" \
             --output-file changeset.json
 
           if grep -q '"conflicts":\s*\[' changeset.json && grep -qv '"conflicts":\s*\[\s*\]' changeset.json; then
             echo "conflicts_found=true" >> $GITHUB_OUTPUT
-            echo "Conflicts detected!"
-            jq '.conflicts' changeset.json
             exit 1
           else
             echo "conflicts_found=false" >> $GITHUB_OUTPUT
           fi
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
-          TARGET_ENV: ${{ env.TARGET_ENV }}
-          CURRENT_MASTER_ENV: ${{ env.CURRENT_MASTER_ENV }}
 
       - name: Apply changeset
         if: steps.conflict-check.outputs.conflicts_found == 'false'
@@ -303,10 +229,6 @@ jobs:
             --space "$SPACE_ID" \
             --environment "$TARGET_ENV" \
             --file changeset.json
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Update master alias
         run: |
@@ -315,14 +237,6 @@ jobs:
             --alias-id "$MASTER_ALIAS" \
             --target-environment-id "$TARGET_ENV" \
             --management-token "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
-          TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Unlock master environment
         run: bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
