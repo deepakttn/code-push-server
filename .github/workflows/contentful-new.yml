@@ -281,7 +281,6 @@ jobs:
       - name: Download roles backup artifact
         uses: dawidd6/action-download-artifact@v6
         with:
-          workflow: contentful-new.yml
           name: contentful-roles-backup
           path: .
 
