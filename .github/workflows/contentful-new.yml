@@ -283,6 +283,34 @@ jobs:
         with:
           name: contentful-roles-backup
           path: .
+      
+      - name: Set SPACE_ID based on brand input
+        id: set_space
+        run: |
+          case "${{ github.event.inputs.brand }}" in
+            "Fitness First")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_FITNESS_FIRST }}" >> $GITHUB_ENV
+              ;;
+            "Dev R&D")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID }}" >> $GITHUB_ENV
+              ;;
+            "Goodlife Website")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE_WEBSITE }}" >> $GITHUB_ENV
+              ;;
+            "Gym Website")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GYM_WEBSITE }}" >> $GITHUB_ENV
+              ;;
+            "Jetts New Zealand")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_JETTS_NEW_ZEALAND }}" >> $GITHUB_ENV
+              ;;
+            "Zap Fitness")
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_ZAP_FITNESS }}" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unknown brand '${{ github.event.inputs.brand }}'"
+              exit 1
+              ;;
+          esac
 
       - name: Fetch latest target environment
         id: fetch_env
@@ -392,6 +420,7 @@ jobs:
           TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Unlock master environment
+        if: always()
         run: bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
