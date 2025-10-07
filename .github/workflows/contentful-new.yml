@@ -438,12 +438,13 @@ jobs:
       
             BACKUP_FILE="roles-backup.json"
             ARTIFACT_NAME="contentful-roles-backup"
-            WORKFLOW_NAME="Contentful CI/CD Automation Workflow"
+            WORKFLOW_FILE="contentful-new.yml"
       
             if [ ! -f "$BACKUP_FILE" ]; then
               echo "⚠️ Backup file $BACKUP_FILE not found in this run. Fetching from last successful run..."
+      
               latest_success_run=$(gh run list \
-                --workflow="$WORKFLOW_NAME" \
+                --workflow="$WORKFLOW_FILE" \
                 --branch=main \
                 --json databaseId,status \
                 -q '.[] | select(.status=="success") | .databaseId' | head -n 1)
@@ -475,6 +476,7 @@ jobs:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           GH_TOKEN: ${{ github.token }}
+
 
 
 
