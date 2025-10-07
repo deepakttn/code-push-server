@@ -148,13 +148,6 @@ jobs:
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           SPACE_ID: ${{ env.SPACE_ID }}
 
-      - name: Lock master environment
-        if: ${{ github.event.inputs.option == 'env-clone' }}
-        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
-        env:
-          SPACE_ID: ${{ env.SPACE_ID }}
-          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-
       - name: Clone environment
         if: ${{ github.event.inputs.option == 'env-clone' }}
         run: |
@@ -169,6 +162,13 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           NEW_ENV: ${{ env.NEW_ENV }}
+      
+      - name: Lock master environment
+        if: ${{ github.event.inputs.option == 'env-clone' }}
+        run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
       
       - name: Add new env to existing CDA key
         if: ${{ github.event.inputs.option == 'env-clone' }}
@@ -233,7 +233,7 @@ jobs:
             status=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
               "https://api.contentful.com/spaces/$SPACE_ID/environments/$NEW_ENV" | jq -r '.sys.status.sys.id')
             if [[ "$status" == "ready" ]]; then
-              echo "✅ Environment $NEW_ENV is ready."
+              echo "Environment $NEW_ENV is ready."
               break
             fi
             echo "Still creating ($status)... waiting 10s..."
@@ -346,7 +346,7 @@ jobs:
 
           if grep -q '"conflicts":\s*\[' changeset.json && grep -qv '"conflicts":\s*\[\s*\]' changeset.json; then
             echo "conflicts_found=true" >> $GITHUB_OUTPUT
-            echo "❌ Conflicts detected!"
+            echo "Conflicts detected!"
             jq '.conflicts' changeset.json
             exit 1
           else
