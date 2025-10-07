@@ -434,12 +434,46 @@ jobs:
         if: ${{ always() && github.event.inputs.option == 'env-clone' }}
         run: |
           if [ "${{ job.status }}" == "failure" ]; then
-            echo "Workflow failed — unlocking master..."
+            echo "❌ Workflow failed — attempting to safely unlock master..."
+      
+            # Check if local backup exists
+            if [ ! -f "roles-backup.json" ]; then
+              echo "⚠️ Backup file roles-backup.json not found in this run. Fetching from last successful run..."
+      
+              # Fetch latest successful run ID
+              latest_success_run=$(gh run list \
+                --workflow="contentful-new.yml" \
+                --branch=main \
+                --json databaseId,status \
+                -q '.[] | select(.status=="success") | .databaseId' | head -n 1)
+      
+              if [ -z "$latest_success_run" ]; then
+                echo "❌ No successful run found with backup artifact — cannot restore roles."
+              else
+                echo "Found successful run ID: $latest_success_run"
+                gh run download "$latest_success_run" \
+                  --name contentful-roles-backup \
+                  --dir .
+                
+                if [ -f "roles-backup.json" ]; then
+                  echo "✅ Successfully fetched backup file from last successful run."
+                else
+                  echo "❌ Failed to fetch backup file from last successful run."
+                fi
+              fi
+            else
+              echo "✅ Found backup file in this run."
+            fi
+      
+            # Unlock master regardless of backup availability
+            echo "🔓 Unlocking master environment..."
             bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN" || true
             echo "Ensured master environment unlocked."
           else
-            echo "Workflow succeeded — no unlock needed."
+            echo "✅ Workflow succeeded — no unlock needed."
           fi
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
