@@ -123,6 +123,9 @@ jobs:
 
           echo "🧮 Next eligible environment name: $next_env_name"
 
+          echo "New environment to create: $new_env_name"
+          echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
+
           # 4️⃣ Check if the next version already exists
           exists=$(jq -r --arg next "$next_env_name" '[ .[] | select(.name == $next) ] | length' envs_parsed.json)
           if (( exists > 0 )); then
