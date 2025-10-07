@@ -474,5 +474,7 @@ jobs:
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+
 
 
