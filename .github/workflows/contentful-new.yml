@@ -281,6 +281,27 @@ jobs:
           workflow: contentful-new.yml
           name: contentful-roles-backup
           path: .
+          run_id: ${{ github.event.inputs.run_id || '' }}
+          skip_unavailable_artifacts: true
+          if_no_artifact_found: ignore
+      
+      - name: Fallback to last successful artifact if none found
+        if: ${{ github.event.inputs.option == 'alias-update' }}
+        run: |
+          if [ ! -f "roles-backup.json" ]; then
+            echo "No artifact in latest run, fetching from last successful run..."
+            latest_success_run=$(gh run list --workflow="contentful-new.yml" --branch=main --json databaseId,status -q '.[] | select(.status==\"success\") | .databaseId' | head -n 1)
+            if [ -z "$latest_success_run" ]; then
+              echo "❌ No successful run found with backup artifact."
+              exit 1
+            fi
+            echo "Found successful run ID: $latest_success_run"
+            gh run download "$latest_success_run" --name contentful-roles-backup --dir .
+          else
+            echo "✅ roles-backup.json found — skipping fallback."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch latest target environment
         if: ${{ github.event.inputs.option == 'alias-update' }}
@@ -396,6 +417,20 @@ jobs:
       - name: Unlock master environment
         if: ${{ github.event.inputs.option == 'alias-update' }}
         run: bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      
+      - name: Ensure master unlocked on failure
+        if: ${{ always() && github.event.inputs.option == 'env-clone' }}
+        run: |
+          if [ "${{ job.status }}" == "failure" ]; then
+            echo "Workflow failed — unlocking master..."
+            bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN" || true
+            echo "Ensured master environment unlocked."
+          else
+            echo "Workflow succeeded — no unlock needed."
+          fi
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
