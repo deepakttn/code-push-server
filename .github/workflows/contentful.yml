@@ -267,7 +267,7 @@ jobs:
       ##########################################################
       - name: Download roles backup artifact
         if: ${{ github.event.inputs.option == 'alias-update' }}
-        uses: dawidd6/action-download-artifact@v3
+        uses: dawidd6/action-download-artifact@v6
         with:
           workflow: contentful.yml
           name: contentful-roles-backup
