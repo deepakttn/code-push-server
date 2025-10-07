@@ -106,38 +106,46 @@ cat "$BACKUP_FILE" | jq -c '.items[]' | while read role; do
   role_id=$(echo "$role" | jq -r '.sys.id')
   role_name=$(echo "$role" | jq -r '.name')
 
-  # Skip Admin
+  # Skip Admin role
   if [[ "$role_name" == "Admin" ]]; then
     echo "Skipping Admin role ($role_id)"
     continue
   fi
 
   echo "Processing role: $role_name ($role_id)"
-
   echo "Policies before modification:"
   echo "$role" | jq '.policies'
 
-  # Make every "allow" policy read-only
-  updated_role=$(echo "$role" | jq '
+  # Update only policies that apply to the master environment or have no environment restriction
+  updated_role=$(echo "$role" | jq --arg env "$MASTER_ENV" '
     .policies |= map(
-      if .effect == "allow" then
+      if .effect == "allow" and (
+          # applies globally (no environments specified)
+          (.environments | not)
+          or
+          # or includes the master env
+          ((.environments // []) | index($env))
+      )
+      then
         .actions = ["read"]
       else
         .
       end
-    )')
+    )
+    | .policies |= unique_by(.constraint, .effect, .actions)
+  ')
 
   echo "Policies after modification:"
   echo "$updated_role" | jq '.policies'
 
-  # PUT updated role
+  # PUT updated role back to Contentful
   curl -s -X PUT \
-    -H "Authorization: Bearer $TOKEN" \
+    -H "Authorization: Bearer '"$TOKEN"'" \
     -H "Content-Type: application/json" \
     -d "$updated_role" \
     "https://api.contentful.com/spaces/$SPACE_ID/roles/$role_id" > /dev/null
 
-  echo "Role '$role_name' updated — all 'allow' actions changed to 'read' only."
+  echo "Role '$role_name' updated — master env policies are now read-only."
 done
 
-echo "Master environment '$MASTER_ENV' locked — all non-admin roles are now read-only."
+echo "Master environment '$MASTER_ENV' locked — all non-admin roles are now read-only for that environment."
