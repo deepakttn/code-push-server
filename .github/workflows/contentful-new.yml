@@ -446,8 +446,8 @@ jobs:
               latest_success_run=$(gh run list \
                 --workflow="$WORKFLOW_FILE" \
                 --branch=main \
-                --json id,status \
-                -q '.[] | select(.status=="success") | .id' | head -n 1)
+                --json number,status \
+                -q '.[] | select(.status=="success") | .number' | head -n 1)
 
               if [ -n "$latest_success_run" ]; then
                 echo "✅ Found successful run ID: $latest_success_run"
