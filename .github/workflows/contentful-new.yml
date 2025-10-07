@@ -96,88 +96,81 @@ jobs:
           master_alias="${{ env.MASTER_ALIAS }}"
           max_env=${{ github.event.inputs.max_env_count }}
 
-          # 1️⃣ Get current master alias target environment (e.g. master-v7)
-          echo "🔍 Resolving environment behind alias '$master_alias'..."
+          # Get current master alias target environment (e.g. master-v7)
           alias_info=$(curl -s \
             -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             "https://api.contentful.com/spaces/$SPACE_ID/environment_aliases/$master_alias")
-
           current_master_env=$(echo "$alias_info" | jq -r '.environment.sys.id // "unknown"')
           echo "🟢 Current master alias points to environment: $current_master_env"
 
-          # 2️⃣ Fetch all environments in the space
+          # Export to GitHub Actions env for next step
+          echo "CURRENT_MASTER_ENV=$current_master_env" >> $GITHUB_ENV
+
+          # Determine next version
+          current_version=$(echo "$current_master_env" | grep -oE '[0-9]+$' || echo "0")
+          next_version=$((current_version + 1))
+          next_env_name="${base}-v${next_version}"
+          echo "🧮 Next eligible environment name: $next_env_name"
+
+          # Export NEW_ENV
+          echo "NEW_ENV=$next_env_name" >> $GITHUB_ENV
+
+          # Fetch all environments
           curl -s \
             -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
             "https://api.contentful.com/spaces/$SPACE_ID/environments" \
             > envs_raw.json
-
           jq '[ .items[] | { name: .name, id: .sys.id, createdAt: .sys.createdAt } ]' envs_raw.json > envs_parsed.json
 
-          echo "📜 Available environments:"
-          jq -r '.[] | "\(.name) | \(.id) | \(.createdAt)"' envs_parsed.json
-
-          # 3️⃣ Determine current and next version numbers
-          current_version=$(echo "$current_master_env" | grep -oE '[0-9]+$' || echo "0")
-          next_version=$((current_version + 1))
-          next_env_name="${base}-v${next_version}"
-
-          echo "🧮 Next eligible environment name: $next_env_name"
-
-          echo "New environment to create: $new_env_name"
-          echo "NEW_ENV=$new_env_name" >> $GITHUB_ENV
-
-          # 4️⃣ Check if the next version already exists
-          exists=$(jq -r --arg next "$next_env_name" '[ .[] | select(.name == $next) ] | length' envs_parsed.json)
-          if (( exists > 0 )); then
-            echo "❌ Environment '$next_env_name' already exists. Aborting new environment creation."
-            exit 1
-          fi
-
-          echo "✅ No higher version exists. Proceeding with environment creation."
-
-          # 5️⃣ Enforce environment count limit (delete oldest if needed)
+          # Delete oldest if exceeding max
           env_count=$(jq "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] | length" envs_parsed.json)
-          echo "📊 Found $env_count existing versioned environments."
-
           if (( env_count > max_env )); then
-            echo "⚠️ Environment count ($env_count) reached max limit ($max_env). Deleting oldest one..."
             oldest_env_id=$(jq -r "[ .[] 
               | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] 
               | sort_by(.createdAt) 
               | .[0].id" envs_parsed.json)
-
             if [[ -n "$oldest_env_id" && "$oldest_env_id" != "null" ]]; then
-              echo "🗑️ Deleting oldest environment: $oldest_env_id"
               contentful space environment delete \
                 --space-id "$SPACE_ID" \
                 --environment-id "$oldest_env_id" \
                 --management-token "$CONTENTFUL_TOKEN"
-            else
-              echo "⚠️ No valid environment found for deletion."
             fi
-          else
-            echo "✅ Environment count within limit ($env_count/$max_env)."
           fi
         env:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           SPACE_ID: ${{ env.SPACE_ID }}
 
-
       - name: Clone environment
         if: ${{ github.event.inputs.option == 'env-clone' }}
         run: |
+          echo "Cloning environment $CURRENT_MASTER_ENV -> $NEW_ENV ..."
           contentful space environment create \
             --space-id "$SPACE_ID" \
             --management-token "$CONTENTFUL_TOKEN" \
             --environment-id "$NEW_ENV" \
             --name "$NEW_ENV" \
-            --source-environment "$MASTER_ALIAS"
+            --source-environment "$CURRENT_MASTER_ENV"
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
+          CURRENT_MASTER_ENV: ${{ env.CURRENT_MASTER_ENV }}
           NEW_ENV: ${{ env.NEW_ENV }}
+
+      # - name: Clone environment
+      #   if: ${{ github.event.inputs.option == 'env-clone' }}
+      #   run: |
+      #     contentful space environment create \
+      #       --space-id "$SPACE_ID" \
+      #       --management-token "$CONTENTFUL_TOKEN" \
+      #       --environment-id "$NEW_ENV" \
+      #       --name "$NEW_ENV" \
+      #       --source-environment "$MASTER_ALIAS"
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      #     MASTER_ALIAS: ${{ env.current_master_env }}
+      #     NEW_ENV: ${{ env.NEW_ENV }}
       
       - name: Lock master environment
         if: ${{ github.event.inputs.option == 'env-clone' }}
