@@ -32,7 +32,7 @@ on:
       source-env:
         description: 'Source environment (used for alias-update)'
         required: false
-        default: 'master-v4'
+        default: 'master-v7'
 
 env:
   CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
