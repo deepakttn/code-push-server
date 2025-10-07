@@ -96,6 +96,7 @@ echo "Current master env: $MASTER_ENV"
 echo "Fetching roles..."
 curl -s \
   -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/vnd.contentful.management.v1+json" \
   "https://api.contentful.com/spaces/$SPACE_ID/roles" \
   | jq '.' > "$BACKUP_FILE"
 
@@ -105,6 +106,7 @@ echo "Roles backup saved to $BACKUP_FILE"
 cat "$BACKUP_FILE" | jq -c '.items[]' | while read role; do
   role_id=$(echo "$role" | jq -r '.sys.id')
   role_name=$(echo "$role" | jq -r '.name')
+  role_version=$(echo "$role" | jq -r '.sys.version')
 
   # Skip Admin role
   if [[ "$role_name" == "Admin" ]]; then
@@ -112,18 +114,17 @@ cat "$BACKUP_FILE" | jq -c '.items[]' | while read role; do
     continue
   fi
 
-  echo "Processing role: $role_name ($role_id)"
+  echo "Processing role: $role_name ($role_id, version $role_version)"
+
   echo "Policies before modification:"
   echo "$role" | jq '.policies'
 
-  # Update only policies that apply to the master environment or have no environment restriction
+  # Update policies only for master env or global policies
   updated_role=$(echo "$role" | jq --arg env "$MASTER_ENV" '
     .policies |= map(
       if .effect == "allow" and (
-          # applies globally (no environments specified)
           (.environments | not)
           or
-          # or includes the master env
           ((.environments // []) | index($env))
       )
       then
@@ -138,14 +139,20 @@ cat "$BACKUP_FILE" | jq -c '.items[]' | while read role; do
   echo "Policies after modification:"
   echo "$updated_role" | jq '.policies'
 
-  # PUT updated role back to Contentful
-  curl -s -X PUT \
-    -H "Authorization: Bearer '"$TOKEN"'" \
-    -H "Content-Type: application/json" \
+  # PUT updated role back to Contentful (with version header)
+  response=$(curl -s -w "%{http_code}" -o /tmp/response.json -X PUT \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/vnd.contentful.management.v1+json" \
+    -H "x-contentful-version: $role_version" \
     -d "$updated_role" \
-    "https://api.contentful.com/spaces/$SPACE_ID/roles/$role_id" > /dev/null
+    "https://api.contentful.com/spaces/$SPACE_ID/roles/$role_id")
 
-  echo "Role '$role_name' updated — master env policies are now read-only."
+  if [[ "$response" == "200" ]]; then
+    echo "Role '$role_name' updated successfully."
+  else
+    echo "Failed to update role '$role_name'. HTTP $response"
+    cat /tmp/response.json
+  fi
 done
 
 echo "Master environment '$MASTER_ENV' locked — all non-admin roles are now read-only for that environment."
