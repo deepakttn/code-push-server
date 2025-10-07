@@ -80,7 +80,6 @@ jobs:
           esac
 
       - name: Manage and clone environments
-        if: ${{ github.event.inputs.option == 'env-clone' }}
         id: manage_envs
         run: |
           echo "📡 Fetching environments for space $SPACE_ID ..."
@@ -143,7 +142,6 @@ jobs:
           SPACE_ID: ${{ env.SPACE_ID }}
 
       - name: Clone environment
-        if: ${{ github.event.inputs.option == 'env-clone' }}
         run: |
           echo "Cloning environment $CURRENT_MASTER_ENV -> $NEW_ENV ..."
           contentful space environment create \
@@ -174,14 +172,12 @@ jobs:
       #     NEW_ENV: ${{ env.NEW_ENV }}
       
       - name: Lock master environment
-        if: ${{ github.event.inputs.option == 'env-clone' }}
         run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
       
       - name: Add new env to existing CDA key
-        if: ${{ github.event.inputs.option == 'env-clone' }}
         run: |
           echo "Fetching CDA Key ID..."
           CDA_KEY_ID=$(curl -s -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
@@ -236,7 +232,6 @@ jobs:
 
       
       - name: Wait for new environment to be ready
-        if: ${{ github.event.inputs.option == 'env-clone' }}
         run: |
           echo "Waiting for environment $NEW_ENV to become ready..."
           for i in {1..30}; do
@@ -251,7 +246,6 @@ jobs:
           done
 
       - name: Run migration scripts
-        if: ${{ github.event.inputs.option == 'env-clone' }}
         run: |
           contentful-migration \
             --space-id "$SPACE_ID" \
@@ -265,7 +259,6 @@ jobs:
           NEW_ENV: ${{ env.NEW_ENV }}
 
       - name: Upload roles backup artifact
-        if: ${{ github.event.inputs.option == 'env-clone' }}
         uses: actions/upload-artifact@v4
         with:
           name: contentful-roles-backup
@@ -289,7 +282,6 @@ jobs:
         run: npm install -g contentful-cli contentful-migration contentful-merge
 
       - name: Download roles backup artifact
-        if: ${{ github.event.inputs.option == 'alias-update' }}
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: contentful-new.yml
@@ -297,7 +289,6 @@ jobs:
           path: .
 
       - name: Fetch latest target environment
-        if: ${{ github.event.inputs.option == 'alias-update' }}
         id: fetch_env
         run: |
           echo "Fetching environments via Contentful API for space $SPACE_ID"
@@ -344,7 +335,6 @@ jobs:
           SPACE_ID: ${{ env.SPACE_ID }}
       
       - name: Ensure source environment exists
-        if: ${{ github.event.inputs.option == 'alias-update' }}
         run: |
           if ! contentful space environment list --space-id "$SPACE_ID" --management-token "$CONTENTFUL_TOKEN" | grep -q "$TARGET_ENV"; then
             echo "Environment $TARGET_ENV does not exist." 
@@ -357,7 +347,6 @@ jobs:
           TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Create changeset and check conflicts
-        if: ${{ github.event.inputs.option == 'alias-update' }}
         id: conflict-check
         run: |
           contentful-merge create \
@@ -381,7 +370,7 @@ jobs:
           TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Apply changeset
-        if: ${{ github.event.inputs.option == 'alias-update' && steps.conflict-check.outputs.conflicts_found == 'false' }}
+        if: ${{ steps.conflict-check.outputs.conflicts_found == 'false' }}
         run: |
           echo "Y" | contentful-merge apply \
             --cma-token "$CONTENTFUL_TOKEN" \
@@ -394,7 +383,6 @@ jobs:
           TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Update master alias
-        if: ${{ github.event.inputs.option == 'alias-update' }}
         run: |
           contentful space environment-alias update \
             --space-id "$SPACE_ID" \
@@ -408,7 +396,6 @@ jobs:
           TARGET_ENV: ${{ env.TARGET_ENV }}
 
       - name: Unlock master environment
-        if: ${{ github.event.inputs.option == 'alias-update' }}
         run: bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
