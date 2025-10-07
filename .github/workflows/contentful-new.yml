@@ -436,44 +436,43 @@ jobs:
           if [ "${{ job.status }}" == "failure" ]; then
             echo "❌ Workflow failed — attempting to safely unlock master..."
       
-            # Check if local backup exists
-            if [ ! -f "roles-backup.json" ]; then
-              echo "⚠️ Backup file roles-backup.json not found in this run. Fetching from last successful run..."
+            BACKUP_FILE="roles-backup.json"
+            ARTIFACT_NAME="contentful-roles-backup"
+            WORKFLOW_NAME="Contentful CI/CD Automation Workflow"
       
-              # Fetch latest successful run ID
+            if [ ! -f "$BACKUP_FILE" ]; then
+              echo "⚠️ Backup file $BACKUP_FILE not found in this run. Fetching from last successful run..."
               latest_success_run=$(gh run list \
-                --workflow="contentful-new.yml" \
+                --workflow="$WORKFLOW_NAME" \
                 --branch=main \
                 --json databaseId,status \
                 -q '.[] | select(.status=="success") | .databaseId' | head -n 1)
       
-              if [ -z "$latest_success_run" ]; then
-                echo "❌ No successful run found with backup artifact — cannot restore roles."
-              else
-                echo "Found successful run ID: $latest_success_run"
-                gh run download "$latest_success_run" \
-                  --name contentful-roles-backup \
-                  --dir .
-                
-                if [ -f "roles-backup.json" ]; then
-                  echo "✅ Successfully fetched backup file from last successful run."
+              if [ -n "$latest_success_run" ]; then
+                echo "✅ Found successful run ID: $latest_success_run"
+                mkdir -p ./tmp-backup
+                gh run download "$latest_success_run" --name "$ARTIFACT_NAME" --dir ./tmp-backup || echo "⚠️ Failed to download artifact"
+                if [ -f "./tmp-backup/$BACKUP_FILE" ]; then
+                  cp "./tmp-backup/$BACKUP_FILE" ./
+                  echo "✅ Successfully restored backup file from previous successful run."
                 else
-                  echo "❌ Failed to fetch backup file from last successful run."
+                  echo "❌ Backup file $BACKUP_FILE not found in downloaded artifact."
                 fi
+              else
+                echo "❌ No successful run found with backup artifact — cannot restore roles."
               fi
             else
-              echo "✅ Found backup file in this run."
+              echo "✅ Backup file already present in this run."
             fi
       
-            # Unlock master regardless of backup availability
             echo "🔓 Unlocking master environment..."
             bash ./scripts/contentful-unlock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN" || true
             echo "Ensured master environment unlocked."
           else
-            echo "✅ Workflow succeeded — no unlock needed."
+            echo "Workflow succeeded — no unlock needed."
           fi
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
