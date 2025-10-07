@@ -115,7 +115,14 @@ jobs:
           # Export NEW_ENV
           echo "NEW_ENV=$next_env_name" >> $GITHUB_ENV
 
-          # Check if the next version already exists
+          # Fetch all environments
+          curl -s \
+            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            "https://api.contentful.com/spaces/$SPACE_ID/environments" \
+            > envs_raw.json
+          jq '[ .items[] | { name: .name, id: .sys.id, createdAt: .sys.createdAt } ]' envs_raw.json > envs_parsed.json
+
+          # ✅ Check if the next version already exists
           exists=$(jq -r --arg next "$next_env_name" '[ .[] | select(.name == $next) ] | length' envs_parsed.json)
           if (( exists > 0 )); then
             echo "❌ Environment '$next_env_name' already exists. Aborting new environment creation."
@@ -123,13 +130,6 @@ jobs:
           fi
 
           echo "✅ No higher version exists. Proceeding with environment creation."
-
-          # Fetch all environments
-          curl -s \
-            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
-            "https://api.contentful.com/spaces/$SPACE_ID/environments" \
-            > envs_raw.json
-          jq '[ .items[] | { name: .name, id: .sys.id, createdAt: .sys.createdAt } ]' envs_raw.json > envs_parsed.json
 
           # Delete oldest if exceeding max
           env_count=$(jq "[ .[] | select(.name != \"$master_alias\" and (.name | test(\"^${base}-v[0-9]+$\"))) ] | length" envs_parsed.json)
