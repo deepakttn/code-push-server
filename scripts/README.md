@@ -14,6 +14,32 @@ This repository contains a GitHub Actions workflow that automates cloning Conten
 * Creates and applies a changeset (using `contentful-merge`) from a chosen source environment into the target environment.
 * Updates the `master` alias to point to the new environment and unlocks the `master` environment (restores roles from backup).
 
+## Workflow Steps
+
+```
+Contentful CI/CD Workflow
+ ├── Set SPACE_ID based on brand input
+ ├── Fetch current master alias (find source env)
+ ├── Determine next eligible env name
+ ├── Check for existing env (abort if exists)
+ ├── Delete oldest env if exceeded max_env_count
+ ├── Create & clone new env from master
+ ├── Lock master environment roles (run contentful-lock-master.sh)
+ ├── Add new env to CDA key
+ ├── Wait for new env to be ready
+ ├── Run migration scripts
+ ├── Upload roles-backup.json
+ ├── Wait for MANUAL APPROVAL (Prod/Env Promotion)
+ ├── Download roles-backup.json artifact
+ ├── Fetch latest target environment (master-vN)
+ ├── Ensure target env exists (fail if missing)
+ ├── Create changeset & check for conflicts
+ │    └── Abort if conflicts found
+ ├── Apply changeset to env (if no conflicts)
+ ├── Update master alias to latest target env
+ └── Unlock master environment roles (run contentful-unlock-master.sh)
+```
+
 ---
 
 ## Workflow inputs & secrets
