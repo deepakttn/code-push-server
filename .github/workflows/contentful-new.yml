@@ -376,6 +376,7 @@ jobs:
           echo "Resolved TARGET_ENV=$target_env"
         env:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           SPACE_ID: ${{ env.SPACE_ID }}
       
       - name: Ensure source environment exists
