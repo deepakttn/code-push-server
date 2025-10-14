@@ -82,7 +82,6 @@ set -euo pipefail
 SPACE_ID="$1"
 TOKEN="$2"
 MASTER_ALIAS="master"
-BACKUP_FILE="roles-backup.json"
 
 echo "Resolving current master environment behind alias '$MASTER_ALIAS'..."
 MASTER_ENV=$(curl -s \
@@ -94,16 +93,14 @@ echo "Current master env: $MASTER_ENV"
 
 # Fetch all roles
 echo "Fetching roles..."
-curl -s \
+roles_json=$(curl -s \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/vnd.contentful.management.v1+json" \
-  "https://api.contentful.com/spaces/$SPACE_ID/roles" \
-  | jq '.' > "$BACKUP_FILE"
+  "https://api.contentful.com/spaces/$SPACE_ID/roles") 
 
-echo "Roles backup saved to $BACKUP_FILE"
 
 # Iterate roles and patch them
-cat "$BACKUP_FILE" | jq -c '.items[]' | while read role; do
+echo "$roles_json" | jq -c '.items[]' | while read role; do
   role_id=$(echo "$role" | jq -r '.sys.id')
   role_name=$(echo "$role" | jq -r '.name')
   role_version=$(echo "$role" | jq -r '.sys.version')
@@ -121,20 +118,19 @@ cat "$BACKUP_FILE" | jq -c '.items[]' | while read role; do
 
   # Update policies only for master env or global policies
   updated_role=$(echo "$role" | jq --arg env "$MASTER_ENV" '
-    .policies |= map(
-      if .effect == "allow" and (
-          (.environments | not)
-          or
-          ((.environments // []) | index($env))
-      )
-      then
+  .policies |= map(
+    if .effect == "allow" and ((.environments | not) or ((.environments // []) | index($env))) then
+      if .actions != ["read"] then
         .actions = ["read"]
       else
         .
       end
-    )
-    | .policies |= unique_by(.constraint, .effect, .actions)
-  ')
+    else
+      .
+    end
+  )
+  | .policies |= unique_by(.constraint, .effect, .actions)
+')
 
   echo "Policies after modification:"
   echo "$updated_role" | jq '.policies'

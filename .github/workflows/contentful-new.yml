@@ -11,7 +11,6 @@ on:
           - Dev R&D
           - Fitness First
           - Goodlife Website
-          - Gym Website
           - Jetts New Zealand
           - Zap Fitness
       base_env_name:
@@ -21,11 +20,11 @@ on:
       max_env_count:
         description: 'Max allowed environments (used for clone)'
         required: false
-        default: 2
-      source_env:
-        description: 'Source environment (for alias update)'
+        default: 4
+      branch:
+        description: 'Branch to checkout (where migration scripts exist)'
         required: false
-        default: 'master-v7'
+        default: master
 
 env:
   CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
@@ -34,16 +33,21 @@ env:
   NODE_VERSION: 20
 
 jobs:
-  prepare-env:
+  clone-env:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install Yarn
+        run: npm install -g yarn
 
       - name: Install Contentful CLI
         run: npm install -g contentful-cli contentful-migration contentful-merge
@@ -53,22 +57,19 @@ jobs:
         run: |
           case "${{ github.event.inputs.brand }}" in
             "Fitness First")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_FITNESS_FIRST }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_FFA_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Dev R&D")
               echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Goodlife Website")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE_WEBSITE }}" >> $GITHUB_ENV
-              ;;
-            "Gym Website")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GYM_WEBSITE }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_GLH_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Jetts New Zealand")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_JETTS_NEW_ZEALAND }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_JNZ_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Zap Fitness")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_ZAP_FITNESS }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_ZAP_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             *)
               echo "Unknown brand '${{ github.event.inputs.brand }}'"
@@ -152,6 +153,20 @@ jobs:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           CURRENT_MASTER_ENV: ${{ env.CURRENT_MASTER_ENV }}
           NEW_ENV: ${{ env.NEW_ENV }}
+      
+      - name: Create roles backup
+        run: bash ./scripts/contentful-backup-roles.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
+        env:
+          SPACE_ID: ${{ env.SPACE_ID }}
+          CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      
+      - name: Upload roles backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: ./roles-backup.json
+          retention-days: 7
+
       
       - name: Lock master environment
         run: bash ./scripts/contentful-lock-master.sh "$SPACE_ID" "$CONTENTFUL_TOKEN"
@@ -239,15 +254,27 @@ jobs:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
           NEW_ENV: ${{ env.NEW_ENV }}
+      
+      # - name: Run migration scripts
+      #   if: ${{ github.event.inputs.option == 'env-clone' }}
+      #   run: |
+      #     cd flg-web-contentful-content-model
+      #     yarn install
+      #     yarn migrate
+      #   env:
+      #     SPACE_ID: ${{ env.SPACE_ID }}
+      #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
+      #     NEW_ENV: ${{ env.NEW_ENV }}
 
-      - name: Upload roles backup artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: contentful-roles-backup
-          path: ./roles-backup.json
-          retention-days: 7
 
-  apply-changes:
+      # - name: Upload roles backup artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: contentful-roles-backup
+      #     path: ./roles-backup.json
+      #     retention-days: 7
+
+  alias-update:
     runs-on: ubuntu-latest
     needs: prepare-env
     environment: prod   # <-- GitHub will pause for approval here
@@ -274,22 +301,19 @@ jobs:
         run: |
           case "${{ github.event.inputs.brand }}" in
             "Fitness First")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_FITNESS_FIRST }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_FFA_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Dev R&D")
               echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Goodlife Website")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GOODLIFE_WEBSITE }}" >> $GITHUB_ENV
-              ;;
-            "Gym Website")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_GYM_WEBSITE }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_GLH_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Jetts New Zealand")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_JETTS_NEW_ZEALAND }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_JNZ_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             "Zap Fitness")
-              echo "SPACE_ID=${{ secrets.CONTENTFUL_SPACE_ID_ZAP_FITNESS }}" >> $GITHUB_ENV
+              echo "SPACE_ID=${{ secrets.CONTENTFUL_ZAP_SPACE_ID }}" >> $GITHUB_ENV
               ;;
             *)
               echo "Unknown brand '${{ github.event.inputs.brand }}'"
@@ -300,6 +324,17 @@ jobs:
       - name: Fetch latest target environment
         id: fetch_env
         run: |
+
+          # Get current master alias target environment (e.g. master-v7)
+          alias_info=$(curl -s \
+            -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
+            "https://api.contentful.com/spaces/$SPACE_ID/environment_aliases/$master_alias")
+          current_master_env=$(echo "$alias_info" | jq -r '.environment.sys.id // "unknown"')
+          echo "Current master alias points to environment: $current_master_env"
+
+          # Export to GitHub Actions env for next step
+          echo "CURRENT_MASTER_ENV=$current_master_env" >> $GITHUB_ENV
+
           echo "Fetching environments via Contentful API for space $SPACE_ID"
 
           # Fetch env list
@@ -331,8 +366,8 @@ jobs:
 
           # Fallback to master if none found
           if [ -z "$latest_env" ] || [ "$latest_env" = "null" ]; then
-            echo "No versioned env found, defaulting to master"
-            target_env="master"
+            echo "No versioned env found. Cannot proceed."
+            exit 1
           else
             target_env="$latest_env"
           fi
@@ -361,7 +396,7 @@ jobs:
           contentful-merge create \
             --cda-token "$CONTENTFUL_CDA_TOKEN" \
             --space "$SPACE_ID" \
-            --source "${{ github.event.inputs['source-env'] }}" \
+            --source "$CURRENT_MASTER_ENV" \
             --target "$TARGET_ENV" \
             --output-file changeset.json
 
@@ -376,7 +411,17 @@ jobs:
         env:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
+          CURRENT_MASTER_ENV: ${{ env.CURRENT_MASTER_ENV }}
           TARGET_ENV: ${{ env.TARGET_ENV }}
+      
+      - name: Upload changeset artifact
+        if: always()   # Ensures it uploads even if previous step fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-changeset
+          path: changeset.json
+          retention-days: 7
+
 
       - name: Apply changeset
         if: ${{ steps.conflict-check.outputs.conflicts_found == 'false' }}
