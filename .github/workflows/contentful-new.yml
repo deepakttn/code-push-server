@@ -276,7 +276,7 @@ jobs:
 
   alias-update:
     runs-on: ubuntu-latest
-    needs: prepare-env
+    needs: clone-env
     environment: prod   # <-- GitHub will pause for approval here
     steps:
       - name: Checkout repository
