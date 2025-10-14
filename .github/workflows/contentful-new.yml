@@ -328,7 +328,7 @@ jobs:
           # Get current master alias target environment (e.g. master-v7)
           alias_info=$(curl -s \
             -H "Authorization: Bearer $CONTENTFUL_TOKEN" \
-            "https://api.contentful.com/spaces/$SPACE_ID/environment_aliases/$master_alias")
+            "https://api.contentful.com/spaces/$SPACE_ID/environment_aliases/master")
           current_master_env=$(echo "$alias_info" | jq -r '.environment.sys.id // "unknown"')
           echo "Current master alias points to environment: $current_master_env"
 
@@ -376,7 +376,6 @@ jobs:
           echo "Resolved TARGET_ENV=$target_env"
         env:
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
-          MASTER_ALIAS: ${{ env.MASTER_ALIAS }}
           SPACE_ID: ${{ env.SPACE_ID }}
       
       - name: Ensure source environment exists
