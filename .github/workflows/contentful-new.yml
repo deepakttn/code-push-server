@@ -1,4 +1,4 @@
-name: Contentful CI/CD Automation Workflow
+name: Contentful CI/CD Automation Workflow New
 
 on:
   workflow_dispatch:
@@ -358,13 +358,13 @@ jobs:
           latest_env=$(jq -r '
             [.items[] 
               | select(.name | test("^master-v[0-9]+$")) 
-              | {name: .name, createdAt: .sys.createdAt}] 
-            | sort_by(.createdAt) 
+              | {name: .name, version: (.name | capture("v(?<num>[0-9]+)").num | tonumber)}] 
+            | sort_by(.version) 
             | last 
             | .name
           ' envs_raw.json)
 
-          # Fallback to master if none found
+          # Master if none found fallback to error and exit job
           if [ -z "$latest_env" ] || [ "$latest_env" = "null" ]; then
             echo "No versioned env found. Cannot proceed."
             exit 1
