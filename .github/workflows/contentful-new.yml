@@ -266,14 +266,6 @@ jobs:
       #     CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
       #     NEW_ENV: ${{ env.NEW_ENV }}
 
-
-      # - name: Upload roles backup artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: contentful-roles-backup
-      #     path: ./roles-backup.json
-      #     retention-days: 7
-
   alias-update:
     runs-on: ubuntu-latest
     needs: clone-env
@@ -281,6 +273,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
