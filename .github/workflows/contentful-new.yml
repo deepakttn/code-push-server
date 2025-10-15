@@ -38,8 +38,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        # with:
-        #   ref: ${{ github.event.inputs.branch }}
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -161,12 +161,12 @@ jobs:
           SPACE_ID: ${{ env.SPACE_ID }}
           CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
       
-      # - name: Upload roles backup artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: contentful-roles-backup
-      #     path: ./roles-backup.json
-      #     retention-days: 7
+      - name: Upload roles backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: ./roles-backup.json
+          retention-days: 7
 
       
       - name: Lock master environment
@@ -274,8 +274,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        # with:
-        #   ref: ${{ github.event.inputs.branch }}
+        with:
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -285,11 +285,11 @@ jobs:
       - name: Install Contentful CLI
         run: npm install -g contentful-cli contentful-migration contentful-merge
 
-      # - name: Download roles backup artifact
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: contentful-roles-backup
-      #     path: .
+      - name: Download roles backup artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: .
       
       - name: Set SPACE_ID based on brand input
         id: set_space
@@ -409,13 +409,13 @@ jobs:
           CURRENT_MASTER_ENV: ${{ env.CURRENT_MASTER_ENV }}
           TARGET_ENV: ${{ env.TARGET_ENV }}
       
-      # - name: Upload changeset artifact
-      #   if: always()   # Ensures it uploads even if previous step fails
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: contentful-changeset
-      #     path: changeset.json
-      #     retention-days: 7
+      - name: Upload changeset artifact
+        if: always()   # Ensures it uploads even if previous step fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: contentful-changeset
+          path: changeset.json
+          retention-days: 7
 
 
       - name: Apply changeset
