@@ -917,7 +917,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     if: always()
-    #needs: clone-env
+    needs: [clone-env, alias-update]
     environment: Production
 
     steps:
