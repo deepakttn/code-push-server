@@ -43,7 +43,7 @@ MASTER_ENV_ID=$(curl -s \
   "https://api.contentful.com/spaces/$SPACE_ID/environments/master" \
   | jq -r '.sys.id // "unknown"')
 
-echo "ℹCurrent master alias points to: $MASTER_ENV_ID"
+echo "Current master alias points to: $MASTER_ENV_ID"
 echo "Restoring roles at the space level (affects all environments, including $MASTER_ENV_ID)..."
 
 cat "$BACKUP_FILE" | jq -c '.items[]' | while read -r role; do

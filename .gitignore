@@ -3,6 +3,7 @@ logs
 *.log
 
 .secrets
+roles-backup.json
 
 # Runtime data
 pids
