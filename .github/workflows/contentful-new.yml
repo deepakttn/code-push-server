@@ -532,7 +532,7 @@ on:
         default: master
 
 env:
-  MAIN_ENVIRONMENT: Production - Software Engineering
+  MAIN_ENVIRONMENT: Production
   CONTENTFUL_TOKEN: ${{ secrets.CONTENTFUL_TOKEN }}
   CONTENTFUL_CDA_TOKEN: ${{ secrets.CONTENTFUL_CDA_TOKEN }}
   MASTER_ALIAS: master
