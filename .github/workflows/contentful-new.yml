@@ -746,11 +746,11 @@ jobs:
             --yes \
             Migrations/index.js
       
-      - name: Run migration scripts
-        run: |
-          cd flg-web-contentful-content-model
-          yarn install
-          yarn migrate
+      # - name: Run migration scripts
+      #   run: |
+      #     cd flg-web-contentful-content-model
+      #     yarn install
+      #     yarn migrate
       
 
   approval:
@@ -783,12 +783,6 @@ jobs:
 
       - name: Install CLI tools
         run: npm install -g contentful-cli contentful-merge
-
-      - name: Download roles backup artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: contentful-roles-backup
-          path: .
 
       - name: Set SPACE_ID based on brand input
         id: set_space
@@ -929,6 +923,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
+      - name: Download roles backup artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: contentful-roles-backup
+          path: .
 
       - name: Set SPACE_ID based on brand input
         id: set_space
